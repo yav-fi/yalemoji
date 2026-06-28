@@ -48,16 +48,11 @@ export default function Home() {
         </div>
 
         <div className={styles.content}>
-          <p className={styles.badge}>Coming soon to campus</p>
           <h1 className={styles.title} id="hero-title">
             <strong>Express yourself</strong>
             <span>across campus</span>
           </h1>
-          <p className={styles.subtitle}>
-            A Yale-first way to share moods, moments, and inside jokes with the people around you.
-          </p>
           <WaitlistForm />
-          <p className={styles.note}>Private beta opens soon for Yale students.</p>
         </div>
 
         <footer className={styles.footer}>© 2026 YaleMoji</footer>

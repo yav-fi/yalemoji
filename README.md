@@ -31,7 +31,7 @@ For Vercel, also set:
 GOOGLE_APPLICATION_CREDENTIALS_JSON='{"type":"service_account",...}'
 ```
 
-The app parses that JSON and passes the service-account credentials to Firestore. On Google Cloud Run, omit `GOOGLE_APPLICATION_CREDENTIALS_JSON` and use the Cloud Run service account via Application Default Credentials.
+The app parses that JSON and passes the service-account credentials to Firestore. If Vercel’s env editor causes JSON formatting issues, set `GOOGLE_APPLICATION_CREDENTIALS_BASE64` instead to the base64-encoded service-account JSON. On Google Cloud Run, omit both JSON env vars and use the Cloud Run service account via Application Default Credentials.
 
 For local API testing against Firestore, authenticate with Application Default Credentials:
 
