@@ -1,0 +1,211 @@
+.page {
+  min-height: calc(100svh - var(--nav-height));
+  padding: var(--space-6) var(--space-page) var(--space-3);
+  background: var(--background);
+}
+
+.editor {
+  width: min(100%, var(--editor-width));
+  margin: 0 auto;
+}
+
+.topControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--space-4);
+}
+
+.close,
+.collapse {
+  display: grid;
+  place-items: center;
+  width: var(--round-control);
+  height: var(--round-control);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  font-size: var(--type-h3);
+  line-height: 1;
+  text-decoration: none;
+}
+
+.close {
+  background: var(--surface-strong);
+  color: var(--foreground);
+}
+
+.collapse {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.collapse span {
+  transform: translateY(var(--collapse-glyph-offset));
+}
+
+.identity {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  margin-top: calc(var(--space-6) * -1);
+}
+
+.face {
+  width: var(--editor-avatar-width);
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.nameRow h1 {
+  margin: 0;
+  font-size: var(--type-h2);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-body);
+  line-height: var(--leading-heading);
+}
+
+.rename {
+  width: var(--rename-width);
+  height: var(--rename-height);
+  padding: 0;
+  border: 0;
+  background: var(--foreground-strong);
+  clip-path: polygon(39% 0, 58% 0, 100% 79%, 81% 100%);
+  transform: rotate(var(--rename-rotation));
+}
+
+.customizer {
+  display: grid;
+  gap: var(--space-7);
+  margin-top: var(--space-8);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding: var(--focus-width);
+  scrollbar-width: thin;
+}
+
+.tab {
+  min-height: var(--control-small);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-strong);
+  color: var(--foreground);
+  font-size: var(--type-caption);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+  transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+
+.tab[data-active="true"] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.colors {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.colors > span {
+  color: var(--foreground-muted);
+  font-size: var(--type-caption);
+  font-variant-caps: all-small-caps;
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-nav);
+  line-height: var(--leading-ui);
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--focus-width);
+}
+
+.swatch {
+  flex: none;
+  width: var(--swatch-size);
+  height: var(--swatch-size);
+  padding: 0;
+  border: var(--selection-width) solid transparent;
+  border-radius: var(--radius-full);
+  background: var(--swatch-default);
+}
+
+.swatch[aria-pressed="true"] {
+  border-color: var(--accent);
+}
+
+.backgroundControls {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: calc(var(--space-4) * -1);
+}
+
+.back,
+.next {
+  min-width: var(--action-width);
+  min-height: var(--control-small);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  color: var(--foreground);
+}
+
+.back { background: var(--surface-dark); }
+.next { background: var(--accent); color: var(--accent-foreground); }
+
+.close:hover,
+.tab:hover,
+.swatch:hover,
+.back:hover { filter: brightness(var(--hover-brightness)); }
+
+.collapse:hover,
+.next:hover { background: var(--accent-hover); }
+
+.close:focus-visible,
+.collapse:focus-visible,
+.rename:focus-visible,
+.tab:focus-visible,
+.swatch:focus-visible,
+.back:focus-visible,
+.next:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+@media (max-width: 48rem) {
+  .page {
+    padding-inline: var(--space-4);
+  }
+
+  .identity {
+    margin-top: var(--space-2);
+  }
+
+  .face {
+    width: var(--editor-avatar-mobile-width);
+  }
+
+  .customizer {
+    margin-top: var(--space-6);
+  }
+
+}

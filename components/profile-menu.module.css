@@ -1,0 +1,106 @@
+.wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.profileButton {
+  display: grid;
+  place-items: center;
+  width: var(--profile-control-size);
+  height: var(--profile-control-size);
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--profile-background);
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.profileButton:hover,
+.profileButton[aria-expanded="true"] {
+  background: var(--profile-background-hover);
+}
+
+.profileButton img {
+  width: var(--profile-avatar-width);
+  height: auto;
+}
+
+.dropdown {
+  position: absolute;
+  top: var(--profile-dropdown-offset);
+  right: 0;
+  z-index: var(--z-dropdown);
+  width: var(--profile-dropdown-width);
+  overflow: hidden;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-overlay-large);
+  background: var(--surface);
+  box-shadow: var(--shadow-overlay-small);
+  transform: translateY(var(--profile-dropdown-translate));
+  transform-origin: top;
+  animation: dropdownExpand var(--motion-base) ease-out;
+}
+
+.closing {
+  animation: dropdownCollapse var(--motion-base) ease-in forwards;
+  pointer-events: none;
+}
+
+.identityHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--profile-header-height);
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.identityHeader img {
+  width: var(--profile-menu-avatar-width);
+  height: auto;
+}
+
+.identityHeader span {
+  font-size: var(--type-app-label);
+  font-weight: var(--weight-semibold);
+}
+
+.menuItems {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-5) var(--space-3);
+}
+
+.dropdownItem {
+  width: 100%;
+  padding-block: var(--space-2);
+  color: var(--foreground-muted);
+  font-size: var(--type-body);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+
+a.dropdownItem:hover,
+a.dropdownItem:focus-visible {
+  color: var(--accent);
+}
+
+.profileButton:focus-visible,
+.dropdownItem:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+@keyframes dropdownExpand {
+  from { max-height: 0; opacity: 0; }
+  to { max-height: var(--profile-dropdown-max-height); opacity: 1; }
+}
+
+@keyframes dropdownCollapse {
+  from { max-height: var(--profile-dropdown-max-height); opacity: 1; }
+  to { max-height: 0; opacity: 0; }
+}

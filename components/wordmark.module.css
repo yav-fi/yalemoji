@@ -1,0 +1,18 @@
+.wordmark {
+  color: var(--foreground);
+  font-family: var(--font-brand);
+  font-size: var(--type-logo);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-brand);
+  line-height: var(--leading-ui);
+  text-decoration: none;
+}
+
+.wordmark span {
+  color: var(--accent);
+}
+
+.wordmark:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}

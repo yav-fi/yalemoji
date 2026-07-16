@@ -1,0 +1,141 @@
+.wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.toggle {
+  display: grid;
+  place-items: center;
+  width: var(--waffle-control-size);
+  height: var(--waffle-control-size);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--foreground-muted);
+  transition: color var(--motion-fast), background-color var(--motion-fast);
+}
+
+.toggle:hover,
+.toggle[aria-expanded="true"] {
+  background: var(--muted);
+  color: var(--foreground-muted);
+}
+
+.waffle {
+  display: grid;
+  grid-template-columns: repeat(3, var(--waffle-dot-size));
+  gap: var(--waffle-dot-gap);
+}
+
+.waffle span {
+  width: var(--waffle-dot-size);
+  height: var(--waffle-dot-size);
+  border-radius: var(--radius-full);
+  background: currentColor;
+}
+
+.dropdown {
+  position: absolute;
+  top: var(--apps-dropdown-offset);
+  right: var(--apps-dropdown-right);
+  z-index: var(--z-dropdown);
+  width: var(--apps-dropdown-width);
+  overflow: hidden;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-overlay);
+  background: var(--surface);
+  box-shadow: var(--shadow-overlay);
+  transform-origin: top;
+  animation: dropdownExpand var(--motion-base) ease-out;
+}
+
+.closing {
+  animation: dropdownCollapse var(--motion-base) ease-in forwards;
+  pointer-events: none;
+}
+
+.appGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-1);
+  padding: var(--apps-grid-padding);
+}
+
+.appTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--radius-md);
+  color: var(--foreground-muted);
+  font-size: var(--type-app-label);
+  text-align: center;
+  text-decoration: none;
+}
+
+.appTile:hover,
+.appTile:focus-visible {
+  background: var(--muted);
+  color: var(--foreground-muted);
+}
+
+.appIcon {
+  display: grid;
+  place-items: center;
+  width: var(--app-icon-box);
+  height: var(--app-icon-box);
+}
+
+.appIcon img {
+  width: var(--app-icon-size);
+  height: var(--app-icon-size);
+  object-fit: contain;
+}
+
+.appIcon .imageUp { transform: translateY(var(--app-image-shift)); }
+.appIcon .imageUpMore { transform: translateY(var(--app-image-shift-more)); }
+.appIcon .imageExtraLarge { width: var(--app-icon-extra-size); height: var(--app-icon-extra-size); max-width: none; }
+.appIcon .imageRounded { border-radius: var(--radius-sm); }
+
+.attribution {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--muted);
+  color: var(--foreground-muted);
+  font-size: var(--type-attribution);
+  font-weight: var(--weight-medium);
+  text-align: center;
+}
+
+.attribution a {
+  color: var(--accent);
+  font-weight: var(--weight-bold);
+  text-underline-offset: var(--underline-offset);
+}
+
+.toggle:focus-visible,
+.appTile:focus-visible,
+.attribution a:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+@keyframes dropdownExpand {
+  from { max-height: 0; opacity: 0; }
+  to { max-height: var(--apps-dropdown-max-height); opacity: 1; }
+}
+
+@keyframes dropdownCollapse {
+  from { max-height: var(--apps-dropdown-max-height); opacity: 1; }
+  to { max-height: 0; opacity: 0; }
+}
+
+@media (max-width: 43.75rem) {
+  .dropdown {
+    right: var(--space-0);
+  }
+}
