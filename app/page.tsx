@@ -1,6 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
 import { Suspense } from "react";
+import { RotatingAppName } from "@/components/rotating-app-name";
 import { TrafficLogger } from "@/components/traffic-logger";
 import { Wordmark } from "@/components/wordmark";
 import styles from "./page.module.css";
@@ -20,11 +20,8 @@ export default function Home() {
         <div className={styles.copy}>
           <h1 className={styles.title} id="hero-title">
             <span>Your avatar on</span>
-            <strong>CourseTable</strong>
+            <RotatingAppName />
           </h1>
-          <Link className={styles.cta} href="/editor">
-            Build mine <span aria-hidden="true">→</span>
-          </Link>
         </div>
 
         <Image

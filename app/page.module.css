@@ -24,9 +24,7 @@
 }
 
 .copy {
-  display: grid;
-  justify-items: start;
-  gap: var(--space-6);
+  display: block;
 }
 
 .title {
@@ -44,35 +42,6 @@
   color: var(--accent);
   font-family: var(--font-brand);
   font-weight: var(--weight-regular);
-}
-
-.cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-width: var(--cta-width);
-  min-height: var(--control-large);
-  padding: var(--space-3) var(--space-6);
-  background: var(--accent);
-  color: var(--accent-foreground);
-  font-size: var(--type-lead);
-  line-height: var(--leading-ui);
-  text-decoration: none;
-  transition: background-color var(--motion-fast) var(--ease-standard);
-}
-
-.cta:hover {
-  background: var(--accent-hover);
-}
-
-.cta:active {
-  background: var(--accent-active);
-}
-
-.cta:focus-visible {
-  outline: var(--focus-width) solid var(--focus);
-  outline-offset: var(--focus-offset);
 }
 
 .avatar {

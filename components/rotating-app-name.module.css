@@ -1,0 +1,35 @@
+.rotator {
+  display: block;
+  min-width: 12ch;
+  min-height: 1.2em;
+  overflow: hidden;
+}
+
+.word {
+  display: block;
+  animation: rotate-app-name 2.4s var(--ease-standard) both;
+}
+
+@keyframes rotate-app-name {
+  0% {
+    opacity: 0;
+    transform: translateY(0.32em);
+  }
+
+  14%,
+  82% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-0.24em);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word {
+    animation: none;
+  }
+}
