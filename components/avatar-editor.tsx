@@ -55,6 +55,13 @@ export function AvatarEditor() {
     setActive(true);
   }
 
+  const categoryIndex = avatarCategories.indexOf(category);
+
+  function moveCategory(offset: -1 | 1) {
+    const nextCategory = avatarCategories[categoryIndex + offset];
+    if (nextCategory) setCategory(nextCategory);
+  }
+
   return (
     <section className={styles.page} aria-labelledby="editor-title">
       <div className={styles.editor}>
@@ -82,10 +89,7 @@ export function AvatarEditor() {
               skinPalette={active ? skinPalette : neutralSkinPalette}
             />
           </div>
-          <div className={styles.nameRow}>
-            <h1 id="editor-title">My YaleMoji</h1>
-            <button aria-label="Rename YaleMoji" className={styles.rename} type="button" />
-          </div>
+          <h1 className={styles.name} id="editor-title">My YaleMoji</h1>
         </div>
 
         {expanded ? (
@@ -174,8 +178,22 @@ export function AvatarEditor() {
             )}
 
             <div className={styles.actions}>
-              <button className={styles.back} type="button">Back</button>
-              <button className={styles.next} type="button">Next</button>
+              <button
+                className={styles.back}
+                disabled={categoryIndex === 0}
+                onClick={() => moveCategory(-1)}
+                type="button"
+              >
+                Back
+              </button>
+              <button
+                className={styles.next}
+                disabled={categoryIndex === avatarCategories.length - 1}
+                onClick={() => moveCategory(1)}
+                type="button"
+              >
+                Next
+              </button>
             </div>
           </div>
         ) : null}

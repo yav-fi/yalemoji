@@ -108,14 +108,11 @@
   --landing-avatar-mobile-width: 8rem;
   --editor-avatar-width: 12.55rem;
   --editor-avatar-mobile-width: 9rem;
-  --rename-width: 2.3rem;
-  --rename-height: 0.45rem;
   --swatch-size: 3.9rem;
   --option-height: 8.6rem;
   --option-empty-height: 8.6rem;
   --action-width: 5.1rem;
   --collapse-glyph-offset: -0.18rem;
-  --rename-rotation: -53deg;
   --hover-brightness: 0.94;
 
   --shadow-raised: 0 0.2rem 0.25rem oklch(0.18 0 0 / 0.22);

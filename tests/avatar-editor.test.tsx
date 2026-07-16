@@ -25,6 +25,26 @@ describe("AvatarEditor", () => {
     expect(screen.getAllByRole("button", { name: /Select color/ })).toHaveLength(13);
   });
 
+  it("moves backward and forward through the feature tabs", () => {
+    render(<AvatarEditor />);
+
+    const back = screen.getByRole("button", { name: "Back" });
+    const next = screen.getByRole("button", { name: "Next" });
+    expect(back).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Face" })).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(next);
+    expect(screen.getByRole("tab", { name: "Hair" })).toHaveAttribute("aria-selected", "true");
+    expect(back).toBeEnabled();
+
+    fireEvent.click(back);
+    expect(screen.getByRole("tab", { name: "Face" })).toHaveAttribute("aria-selected", "true");
+
+    for (let step = 0; step < 6; step += 1) fireEvent.click(next);
+    expect(screen.getByRole("tab", { name: "Background" })).toHaveAttribute("aria-selected", "true");
+    expect(next).toBeDisabled();
+  });
+
   it("starts as a gray face and reveals the fixed features after customization", () => {
     const { container } = render(<AvatarEditor />);
 
