@@ -83,7 +83,7 @@ export function AvatarEditor() {
             />
           </div>
           <div className={styles.nameRow}>
-            <h1 id="editor-title">Yavin’s YaleMoji</h1>
+            <h1 id="editor-title">My YaleMoji</h1>
             <button aria-label="Rename YaleMoji" className={styles.rename} type="button" />
           </div>
         </div>

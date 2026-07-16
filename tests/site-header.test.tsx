@@ -21,7 +21,7 @@ describe("SiteHeader", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Profile menu" }));
 
-    expect(screen.getByText("Yavin’s YaleMoji")).toBeInTheDocument();
+    expect(screen.getByText("My YaleMoji")).toBeInTheDocument();
     expect(screen.getAllByText("My Library")).toHaveLength(2);
     expect(screen.queryByRole("link", { name: "My Library" })).not.toBeInTheDocument();
   });

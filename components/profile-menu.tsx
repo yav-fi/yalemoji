@@ -24,7 +24,7 @@ export function ProfileMenu() {
         <div className={`${styles.dropdown} ${closing ? styles.closing : ""}`}>
           <div className={styles.identityHeader}>
             <Image alt="" height={82} src="/assets/landing-avatar.png" width={92} />
-            <span>Yavin’s YaleMoji</span>
+            <span>My YaleMoji</span>
           </div>
           <div className={styles.menuItems}>
             <Link className={styles.dropdownItem} href="/editor" onClick={closeDropdown}>
