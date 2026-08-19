@@ -1,7 +1,7 @@
 .canvas {
   position: relative;
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
 }
 
 .layer {
@@ -9,33 +9,7 @@
   inset: 0;
 }
 
-.background {
-  position: absolute;
-  inset: 0;
-  z-index: var(--avatar-background-layer);
-  border-radius: var(--radius-lg);
-}
-
-.hairBack,
-.hairFront {
+.layer[data-palette="hair"] {
   --avatar-primary: var(--avatar-hair-primary);
   --avatar-secondary: var(--avatar-hair-secondary);
-}
-
-.layer[data-category="background"] { z-index: var(--avatar-background-layer); }
-.hairBack { z-index: var(--avatar-hair-back-layer); }
-.layer[data-category="face"] { z-index: var(--avatar-face-layer); }
-.nose { z-index: var(--avatar-nose-layer); }
-.layer[data-category="eyes"] { z-index: var(--avatar-eyes-layer); }
-.layer[data-category="brows"] { z-index: var(--avatar-brows-layer); }
-.layer[data-category="mouth"] { z-index: var(--avatar-mouth-layer); }
-.hairFront { z-index: var(--avatar-hair-front-layer); }
-.layer[data-category="accessories"] { z-index: var(--avatar-accessories-layer); }
-
-.fallback {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
 }

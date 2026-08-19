@@ -1,53 +1,340 @@
+export type AvatarBackgroundRamp = {
+  angle: number;
+  stops: { color: string; at: number }[];
+};
+
+export type AvatarBackgroundPaint =
+  | { kind: "solid"; color: string }
+  | ({ kind: "linear" } & AvatarBackgroundRamp)
+  | {
+      kind: "blobs";
+      base: AvatarBackgroundRamp;
+      blobs: { x: number; y: number; color: string; radius: number }[];
+    }
+  | { kind: "checks"; first: string; second: string }
+  | { kind: "dots"; dot: string; background: string; radius: number };
+
 export type AvatarBackgroundOption = {
   background: string;
   id: string;
   label: string;
+  paint: AvatarBackgroundPaint;
 };
 
-export const backgroundColors = [
-  { id: "solid-1", label: "Blush", background: "#f7bcc4" },
-  { id: "solid-2", label: "Peach", background: "#f8c79d" },
-  { id: "solid-3", label: "Butter", background: "#f3dfa0" },
-  { id: "solid-4", label: "Mint", background: "#b9e2ca" },
-  { id: "solid-5", label: "Seafoam", background: "#afe1df" },
-  { id: "solid-6", label: "Sky", background: "#b7d4f4" },
-  { id: "solid-7", label: "Periwinkle", background: "#c2c7f3" },
-  { id: "solid-8", label: "Lilac", background: "#d7bdec" },
-  { id: "solid-9", label: "Pink", background: "#efbdd9" },
-  { id: "solid-10", label: "Cream", background: "#f3e8cf" },
-  { id: "solid-11", label: "Sage", background: "#cad9bd" },
-  { id: "solid-12", label: "Mist", background: "#d5dde5" }
-] as const satisfies readonly AvatarBackgroundOption[];
+export type AvatarBackgroundSection = {
+  id: "solid" | "gradient" | "pattern";
+  label: string;
+  options: readonly AvatarBackgroundOption[];
+};
 
-export const backgroundGradients = [
-  {
-    id: "gradient-1",
-    label: "Pink and yellow",
-    background: "linear-gradient(135deg, #f3b9d4 0%, #f5dfa0 100%)"
-  },
-  {
-    id: "gradient-2",
-    label: "Peach and pink",
-    background: "linear-gradient(135deg, #f7c495 0%, #edacd2 100%)"
-  },
-  {
-    id: "gradient-3",
-    label: "Mint and sky",
-    background: "linear-gradient(135deg, #b7e3ca 0%, #b7d5f5 100%)"
-  },
-  {
-    id: "gradient-4",
-    label: "Blue and lilac",
-    background: "linear-gradient(135deg, #b4d5f4 0%, #d2b8eb 100%)"
-  },
-  {
-    id: "gradient-5",
-    label: "Yellow and mint",
-    background: "linear-gradient(135deg, #f4e29e 0%, #b5dfc8 100%)"
-  },
-  {
-    id: "gradient-6",
-    label: "Rose and periwinkle",
-    background: "linear-gradient(135deg, #efb6c3 0%, #bec4f1 100%)"
+const pastelColors = [
+  { label: "White", light: "#FFFFFF", deep: "#E4EBF2" },
+  { label: "Cream", light: "#FFF8EE", deep: "#F3E2C6" },
+  { label: "Sky", light: "#DDEEFF", deep: "#AFD4F2" },
+  { label: "Mint", light: "#D6F5E8", deep: "#A5E3C9" },
+  { label: "Blush", light: "#FFE0E8", deep: "#FFB8C9" },
+  { label: "Lavender", light: "#EAE0FF", deep: "#C6B2F2" },
+  { label: "Sunshine", light: "#FFF5CC", deep: "#FFE196" },
+  { label: "Peach", light: "#FFE8D6", deep: "#FFC9A3" }
+] as const;
+
+const linear = (
+  angle: number,
+  ...stops: [color: string, at: number][]
+): AvatarBackgroundPaint => ({
+  kind: "linear",
+  angle,
+  stops: stops.map(([color, at]) => ({ color, at }))
+});
+
+const dots = (dot: string, background: string): AvatarBackgroundPaint => ({
+  kind: "dots",
+  dot,
+  background,
+  radius: 28
+});
+
+const checks = (first: string, second: string): AvatarBackgroundPaint => ({
+  kind: "checks",
+  first,
+  second
+});
+
+const rampCss = ({ angle, stops }: AvatarBackgroundRamp) =>
+  `linear-gradient(${angle}deg, ${stops
+    .map(({ color, at }) => `${color} ${at}%`)
+    .join(", ")})`;
+
+export function avatarBackgroundCss(paint: AvatarBackgroundPaint): string {
+  switch (paint.kind) {
+    case "solid":
+      return paint.color;
+    case "linear":
+      return rampCss(paint);
+    case "blobs":
+      return [
+        ...paint.blobs.map(
+          (blob) =>
+            `radial-gradient(circle at ${blob.x}% ${blob.y}%, ${blob.color} 0%, transparent ${blob.radius}%)`
+        ),
+        rampCss(paint.base)
+      ].join(", ");
+    case "checks":
+      return `repeating-conic-gradient(${paint.first} 0% 25%, ${paint.second} 0% 50%) 0 0 / 25% 25%`;
+    case "dots": {
+      const dot = `radial-gradient(circle at 50% 50%, ${paint.dot} ${paint.radius}%, transparent ${paint.radius + 1}%)`;
+      return `${dot} 0 0 / 25% 25%, ${dot} 16.6667% 16.6667% / 25% 25%, ${paint.background}`;
+    }
   }
-] as const satisfies readonly AvatarBackgroundOption[];
+}
+
+const option = (
+  id: string,
+  label: string,
+  paint: AvatarBackgroundPaint
+): AvatarBackgroundOption => ({
+  id,
+  label,
+  paint,
+  background: avatarBackgroundCss(paint)
+});
+
+const gradientMixes = [
+  option("gradient-tie-dye", "Tie Dye", {
+    kind: "blobs",
+    blobs: [
+      { x: 18, y: 20, color: "#FFC9DE", radius: 46 },
+      { x: 80, y: 16, color: "#C4E3FF", radius: 44 },
+      { x: 22, y: 80, color: "#CFF2DF", radius: 44 },
+      { x: 84, y: 78, color: "#FFE6B4", radius: 46 },
+      { x: 50, y: 52, color: "#E4D6FF", radius: 52 }
+    ],
+    base: {
+      angle: 180,
+      stops: [
+        { color: "#FFF6FA", at: 0 },
+        { color: "#F3F8FF", at: 100 }
+      ]
+    }
+  }),
+  option(
+    "gradient-rainbow",
+    "Rainbow",
+    linear(
+      120,
+      ["#FFD6E8", 0],
+      ["#FFE6B4", 25],
+      ["#CFF2DF", 50],
+      ["#C4E3FF", 75],
+      ["#E4D6FF", 100]
+    )
+  ),
+  option(
+    "gradient-sunset",
+    "Sunset",
+    linear(180, ["#FFEBCB", 0], ["#FFD2DC", 55], ["#E2D7FF", 100])
+  ),
+  option(
+    "gradient-cotton-candy",
+    "Cotton Candy",
+    linear(135, ["#FFDAED", 0], ["#EADCFF", 50], ["#D6E9FF", 100])
+  ),
+  option(
+    "gradient-aurora",
+    "Aurora",
+    linear(160, ["#D6F5E8", 0], ["#D9E8FF", 45], ["#EADCFF", 100])
+  ),
+  option(
+    "gradient-twilight",
+    "Twilight",
+    linear(180, ["#FFE0D6", 0], ["#E0D6F5", 55], ["#C9D9F0", 100])
+  ),
+  option(
+    "gradient-lagoon",
+    "Lagoon",
+    linear(200, ["#CFF2DF", 0], ["#AFD4F2", 50], ["#C6B2F2", 100])
+  ),
+  option(
+    "gradient-peachy",
+    "Peachy",
+    linear(160, ["#FFF0C6", 0], ["#FFC9A3", 55], ["#FFB8C9", 100])
+  )
+] as const;
+
+export const backgroundSections = [
+  {
+    id: "solid",
+    label: "Solid",
+    options: pastelColors.map(({ label, light }, index) =>
+      option(`solid-${index + 1}`, label, { kind: "solid", color: light })
+    )
+  },
+  {
+    id: "gradient",
+    label: "Gradient",
+    options: [
+      ...pastelColors.map(({ label, light, deep }, index) =>
+        option(
+          `gradient-${index + 1}`,
+          label,
+          linear(180, [light, 0], [deep, 100])
+        )
+      ),
+      ...gradientMixes
+    ]
+  },
+  {
+    id: "pattern",
+    label: "Pattern",
+    options: [
+      option("pattern-dots-cocoa", "Dots Cocoa", dots("#D6BBA4", "#FBF4EC")),
+      option("pattern-dots-sky", "Dots Sky", dots("#AFD4F2", "#F1F7FE")),
+      option("pattern-dots-mint", "Dots Mint", dots("#A5E3C9", "#F1FBF6")),
+      option("pattern-dots-blush", "Dots Blush", dots("#FFB8C9", "#FFF3F6")),
+      option("pattern-dots-lilac", "Dots Lilac", dots("#C6B2F2", "#F6F3FE")),
+      option("pattern-dots-butter", "Dots Butter", dots("#FFE196", "#FFFCF0")),
+      option("pattern-checks-blush", "Checks Blush", checks("#FFE3EE", "#E7F0FF")),
+      option("pattern-checks-ink", "Checks Ink", checks("#C9CFD8", "#F7F8FA")),
+      option("pattern-checks-mint", "Checks Mint", checks("#D9F2E4", "#F4FBF7")),
+      option("pattern-checks-lilac", "Checks Lilac", checks("#E7DAFF", "#F7F2FF")),
+      option("pattern-checks-butter", "Checks Butter", checks("#FFF0C6", "#FFFBEA"))
+    ]
+  }
+] as const satisfies readonly AvatarBackgroundSection[];
+
+export const backgroundColors = backgroundSections[0].options;
+export const backgroundGradients = backgroundSections[1].options;
+export const backgroundPatterns = backgroundSections[2].options;
+export const defaultAvatarBackground = backgroundColors[0];
+export const avatarBackgroundOptions = backgroundSections.flatMap(
+  (section) => section.options
+);
+
+export function findAvatarBackground(id: string) {
+  return (
+    avatarBackgroundOptions.find((background) => background.id === id) ??
+    defaultAvatarBackground
+  );
+}
+
+export function avatarBackgroundCssForRectangle(
+  paint: AvatarBackgroundPaint
+): string {
+  if (paint.kind === "checks") {
+    return `repeating-conic-gradient(${paint.first} 0% 25%, ${paint.second} 0% 50%) 0 0 / 30px 30px`;
+  }
+
+  if (paint.kind === "dots") {
+    const dot = `radial-gradient(circle at 50% 50%, ${paint.dot} ${paint.radius}%, transparent ${paint.radius + 1}%)`;
+    return `${dot} 0 0 / 28px 28px, ${dot} 14px 14px / 28px 28px, ${paint.background}`;
+  }
+
+  if (paint.kind === "blobs") {
+    return [
+      ...paint.blobs.map(
+        (blob) =>
+          `radial-gradient(ellipse at ${blob.x}% ${blob.y}%, ${blob.color} 0%, transparent ${blob.radius}%)`
+      ),
+      rampCss(paint.base)
+    ].join(", ");
+  }
+
+  return avatarBackgroundCss(paint);
+}
+
+const hexToRgba = (hex: string, alpha: number) => {
+  const value = hex.replace("#", "");
+  const normalized =
+    value.length === 3 ? value.split("").map((character) => character + character).join("") : value;
+  const color = Number.parseInt(normalized, 16);
+  return `rgba(${(color >> 16) & 255}, ${(color >> 8) & 255}, ${color & 255}, ${alpha})`;
+};
+
+function canvasRamp(
+  context: CanvasRenderingContext2D,
+  { angle, stops }: AvatarBackgroundRamp,
+  size: number
+) {
+  const radians = (angle * Math.PI) / 180;
+  const dx = Math.sin(radians);
+  const dy = -Math.cos(radians);
+  const length = Math.abs(size * dx) + Math.abs(size * dy);
+  const center = size / 2;
+  const gradient = context.createLinearGradient(
+    center - (dx * length) / 2,
+    center - (dy * length) / 2,
+    center + (dx * length) / 2,
+    center + (dy * length) / 2
+  );
+  stops.forEach(({ color, at }) => gradient.addColorStop(at / 100, color));
+  return gradient;
+}
+
+export function drawAvatarBackground(
+  context: CanvasRenderingContext2D,
+  paint: AvatarBackgroundPaint,
+  size: number
+) {
+  if (paint.kind === "solid" || paint.kind === "linear") {
+    context.fillStyle =
+      paint.kind === "solid" ? paint.color : canvasRamp(context, paint, size);
+    context.fillRect(0, 0, size, size);
+    return;
+  }
+
+  if (paint.kind === "blobs") {
+    context.fillStyle = canvasRamp(context, paint.base, size);
+    context.fillRect(0, 0, size, size);
+    [...paint.blobs].reverse().forEach((blob) => {
+      const x = (blob.x / 100) * size;
+      const y = (blob.y / 100) * size;
+      const farthestCorner = Math.max(
+        Math.hypot(x, y),
+        Math.hypot(size - x, y),
+        Math.hypot(x, size - y),
+        Math.hypot(size - x, size - y)
+      );
+      const radius = (blob.radius / 100) * farthestCorner;
+      const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+      gradient.addColorStop(0, blob.color);
+      gradient.addColorStop(1, hexToRgba(blob.color, 0));
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, size, size);
+    });
+    return;
+  }
+
+  if (paint.kind === "checks") {
+    const cell = size / 8;
+    for (let row = 0; row < 8; row += 1) {
+      for (let column = 0; column < 8; column += 1) {
+        context.fillStyle = (row + column) % 2 === 0 ? paint.second : paint.first;
+        context.fillRect(column * cell, row * cell, cell, cell);
+      }
+    }
+    return;
+  }
+
+  context.fillStyle = paint.background;
+  context.fillRect(0, 0, size, size);
+  const tile = size / 4;
+  const radius = (tile / 2) * Math.SQRT2;
+  const drawDot = (x: number, y: number) => {
+    const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+    gradient.addColorStop(paint.radius / 100, paint.dot);
+    gradient.addColorStop((paint.radius + 1) / 100, hexToRgba(paint.dot, 0));
+    context.fillStyle = gradient;
+    context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+  };
+
+  for (let row = 0; row < 4; row += 1) {
+    for (let column = 0; column < 4; column += 1) {
+      drawDot((column + 0.5) * tile, (row + 0.5) * tile);
+    }
+  }
+  for (let row = 0; row <= 4; row += 1) {
+    for (let column = 0; column <= 4; column += 1) {
+      drawDot(column * tile, row * tile);
+    }
+  }
+}

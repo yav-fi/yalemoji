@@ -1,8 +1,13 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import { SiteHeader } from "@/components/site-header";
+import { SAVED_AVATAR_STORAGE_KEY } from "@/lib/saved-avatar";
 
 describe("SiteHeader", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
   it("opens the Yale apps panel from the waffle", () => {
     render(<SiteHeader />);
 
@@ -24,5 +29,37 @@ describe("SiteHeader", () => {
     expect(screen.getByText("My YaleMoji")).toBeInTheDocument();
     expect(screen.getAllByText("My Library")).toHaveLength(2);
     expect(screen.queryByRole("link", { name: "My Library" })).not.toBeInTheDocument();
+  });
+
+  it("composites a saved transparent avatar over its stored background", async () => {
+    const imageDataUrl = "data:image/png;base64,iVBORw0KGgo=";
+    window.localStorage.setItem(
+      SAVED_AVATAR_STORAGE_KEY,
+      JSON.stringify({
+        backgroundId: "solid-4",
+        imageDataUrl,
+        savedAt: "2026-07-19T00:00:00.000Z"
+      })
+    );
+
+    render(<SiteHeader />);
+    const profileButton = screen.getByRole("button", { name: "Profile menu" });
+
+    await waitFor(() =>
+      expect(profileButton.querySelector("img")).toHaveAttribute(
+        "src",
+        imageDataUrl
+      )
+    );
+    expect(profileButton).toHaveAttribute(
+      "style",
+      expect.stringContaining("background")
+    );
+
+    fireEvent.click(profileButton);
+    expect(screen.getByText("My YaleMoji").parentElement).toHaveAttribute(
+      "data-saved",
+      "true"
+    );
   });
 });

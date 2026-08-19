@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AvatarEditor } from "@/components/avatar-editor";
 import { normalizeAvatarSvg } from "@/components/avatar-layer";
@@ -25,37 +25,36 @@ describe("AvatarEditor", () => {
     expect(screen.getAllByRole("button", { name: /Select color/ })).toHaveLength(13);
   });
 
-  it("moves backward and forward through the feature tabs", () => {
+  it("uses direct feature tabs and keeps export available", () => {
     render(<AvatarEditor />);
 
-    const back = screen.getByRole("button", { name: "Back" });
-    const next = screen.getByRole("button", { name: "Next" });
-    expect(back).toBeDisabled();
     expect(screen.getByRole("tab", { name: "Face" })).toHaveAttribute("aria-selected", "true");
-
-    fireEvent.click(next);
+    fireEvent.click(screen.getByRole("tab", { name: "Hair" }));
     expect(screen.getByRole("tab", { name: "Hair" })).toHaveAttribute("aria-selected", "true");
-    expect(back).toBeEnabled();
-
-    fireEvent.click(back);
-    expect(screen.getByRole("tab", { name: "Face" })).toHaveAttribute("aria-selected", "true");
-
-    for (let step = 0; step < 6; step += 1) fireEvent.click(next);
-    expect(screen.getByRole("tab", { name: "Background" })).toHaveAttribute("aria-selected", "true");
-    expect(next).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Download PNG with background" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Download transparent PNG" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save avatar locally" })
+    ).toBeInTheDocument();
   });
 
-  it("starts as a gray face and reveals the fixed features after customization", () => {
+  it("starts with the selected face and fixed nose, then toggles features", () => {
     const { container } = render(<AvatarEditor />);
-
-    expect(container.querySelector('[data-active="false"]')).toBeInTheDocument();
-    expect(container.querySelector('[data-avatar-layer="nose"]')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Select color 1" }));
 
     expect(container.querySelector('[data-active="true"]')).toBeInTheDocument();
     expect(container.querySelector('[data-avatar-layer="nose"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-category="brows"]')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Eyebrows" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 1" }));
     expect(container.querySelector('[data-category="brows"]')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 1" }));
+    expect(container.querySelector('[data-category="brows"]')).not.toBeInTheDocument();
   });
 
   it("applies both halves of a selected hair style", () => {
@@ -68,50 +67,61 @@ describe("AvatarEditor", () => {
     expect(container.querySelector('[data-avatar-layer="hair-front"]')).toBeInTheDocument();
   });
 
-  it("previews hair around the selected face", () => {
+  it("previews both halves of each hair style", () => {
     const { container } = render(<AvatarEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Select Face 2" }));
     fireEvent.click(screen.getByRole("tab", { name: "Hair" }));
 
     const firstHair = screen.getByRole("button", { name: "Select Hair 1" });
     expect(firstHair.querySelector('[data-preview-layer="hair-back"]')).toBeInTheDocument();
-    expect(firstHair.querySelector('[data-preview-layer="face"]')).toHaveAttribute("data-avatar-option", "face-2");
     expect(firstHair.querySelector('[data-preview-layer="hair-front"]')).toBeInTheDocument();
     expect(container.querySelector('[aria-label="Hair options"]')).toBeInTheDocument();
   });
 
-  it("wires the numbered accessory options", () => {
+  it("groups accessories into independent wearable slots", () => {
     const { container } = render(<AvatarEditor />);
 
     fireEvent.click(screen.getByRole("tab", { name: "Accessories" }));
-    expect(screen.getAllByRole("button", { name: /Select Accessory/ })).toHaveLength(22);
-    fireEvent.click(screen.getByRole("button", { name: "Select Accessory 22" }));
-    expect(container.querySelector('[data-category="accessories"]')).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Eyewear" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "College Crest" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Select Eyewear/ })).toHaveLength(4);
+    expect(screen.getAllByRole("button", { name: /Select College crest/ })).toHaveLength(15);
+
+    fireEvent.click(screen.getByRole("button", { name: "Select Eyewear 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select Cheeks 1" }));
+    expect(container.querySelector('[data-avatar-layer="eyewear"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-avatar-layer="cheeks"]')).toBeInTheDocument();
   });
 
-  it("renders solid colors and preset gradient backgrounds", () => {
+  it("renders solid, gradient, and pattern backgrounds", () => {
     const { container } = render(<AvatarEditor />);
 
     fireEvent.click(screen.getByRole("tab", { name: "Background" }));
-    expect(screen.getByRole("group", { name: "Background color" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Background solid" })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Background gradient" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /background/ })).toHaveLength(18);
+    expect(screen.getByRole("group", { name: "Background pattern" })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: /^Select .* background$/ })
+    ).toHaveLength(35);
 
-    fireEvent.click(screen.getByRole("button", { name: "Select Mint background" }));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Background solid" })).getByRole(
+        "button",
+        { name: "Select Mint background" }
+      )
+    );
     let background = container.querySelector('[data-avatar-layer="background"]');
     expect(background).toHaveAttribute("data-background-option", "solid-4");
     expect(background?.getAttribute("style")).not.toContain("gradient");
 
-    fireEvent.click(screen.getByRole("button", { name: "Select Pink and yellow gradient background" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select Tie Dye background" }));
     background = container.querySelector('[data-avatar-layer="background"]');
-    expect(background).toHaveAttribute("data-background-option", "gradient-1");
-    expect(background).toHaveAttribute("style", expect.stringContaining("linear-gradient"));
+    expect(background).toHaveAttribute("data-background-option", "gradient-tie-dye");
   });
 
   it("makes exported layers transparent and maps skin colors to palette slots", () => {
     const svg = '<svg><rect width="502" height="502" fill="white"/><path fill="#C4C4C4" stroke="#676767"/></svg>';
-    const normalized = normalizeAvatarSvg("/avatar/face/1.svg", svg);
+    const normalized = normalizeAvatarSvg("/yalemoji/Face/Face_1.svg", svg);
 
     expect(normalized).not.toContain("<rect");
     expect(normalized).toContain("var(--avatar-primary)");
@@ -127,7 +137,7 @@ describe("AvatarEditor", () => {
       '<rect width="502" height="502" fill="white"/>',
       '</clipPath></defs></svg>'
     ].join("");
-    const normalized = normalizeAvatarSvg("/avatar/hair-front/5.svg", svg);
+    const normalized = normalizeAvatarSvg("/yalemoji/Hairs/5-front.svg", svg);
 
     expect(normalized.match(/<rect/g)).toHaveLength(1);
     expect(normalized).toContain('<clipPath id="clip"><rect');
@@ -135,7 +145,7 @@ describe("AvatarEditor", () => {
 
   it("maps hair fills and outlines to the selected hair palette", () => {
     const svg = '<svg><path fill="#515151"/><path fill="#676767" stroke="black"/></svg>';
-    const normalized = normalizeAvatarSvg("/avatar/hair-front/1.svg", svg);
+    const normalized = normalizeAvatarSvg("/yalemoji/Hairs/1-front.svg", svg);
 
     expect(normalized.match(/var\(--avatar-primary\)/g)).toHaveLength(2);
     expect(normalized).toContain('stroke="var(--avatar-secondary)"');

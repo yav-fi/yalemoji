@@ -1,38 +1,46 @@
 .grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(66px, 1fr));
+  gap: 10px;
 }
 
 .option {
-  display: block;
+  position: relative;
+  display: flex;
   min-width: 0;
-  padding: var(--space-2);
-  border: var(--selection-width) solid transparent;
-  border-radius: var(--radius-lg);
-  background: var(--surface-strong);
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 9%;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #f4f6f9;
   color: var(--foreground);
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
 }
 
 .option[aria-pressed="true"] {
-  border-color: var(--accent);
+  border-color: #00356b;
+  background: #dce9f5;
 }
 
 .option:hover {
-  filter: brightness(var(--hover-brightness));
+  background: #e9eef4;
 }
 
 .option:focus-visible {
-  outline: var(--focus-width) solid var(--focus);
-  outline-offset: var(--focus-offset);
+  outline: 3px solid color-mix(in srgb, #00356b 42%, transparent);
+  outline-offset: 2px;
 }
 
 .preview {
   position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 1;
-  background: var(--surface);
+  height: 100%;
 }
 
 .previewLayer {
@@ -40,28 +48,32 @@
   inset: 0;
 }
 
-.hairBack { z-index: 1; }
-.face { z-index: 2; }
-.hairFront { z-index: 3; }
+.hairBack,
+.hairFront {
+  --avatar-primary: var(--avatar-hair-primary, var(--avatar-primary));
+  --avatar-secondary: var(--avatar-hair-secondary, var(--avatar-secondary));
+}
+
+.hairBack {
+  z-index: 1;
+}
+
+.hairFront {
+  z-index: 2;
+}
 
 .empty {
-  min-height: var(--option-empty-height);
+  min-height: 8rem;
   margin: 0;
-  padding: var(--space-5);
-  border: var(--border-width) dashed var(--border);
-  border-radius: var(--radius-lg);
-  color: var(--foreground-muted);
-  font-size: var(--type-caption);
-  line-height: var(--leading-copy);
+  padding: 1.25rem;
+  border: 1px dashed #b9c4d1;
+  border-radius: 10px;
+  color: #67778c;
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 .empty code {
-  color: var(--foreground);
+  color: #00356b;
   font-family: var(--font-brand);
-}
-
-@media (max-width: 48rem) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }

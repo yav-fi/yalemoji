@@ -13,18 +13,20 @@
   overflow: hidden;
   border: 0;
   border-radius: var(--radius-md);
-  background: var(--profile-background);
+  background: #d8dce1;
   transition: background-color var(--motion-fast) var(--ease-standard);
 }
 
 .profileButton:hover,
 .profileButton[aria-expanded="true"] {
-  background: var(--profile-background-hover);
+  background: #cbd0d6;
+  filter: brightness(0.96);
 }
 
 .profileButton img {
-  width: var(--profile-avatar-width);
-  height: auto;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .dropdown {
@@ -59,14 +61,38 @@
   color: var(--accent-foreground);
 }
 
+.identityHeader[data-saved="true"] {
+  min-height: 8.25rem;
+  background-position: center;
+  background-size: cover;
+}
+
 .identityHeader img {
   width: var(--profile-menu-avatar-width);
   height: auto;
 }
 
+.identityHeader[data-saved="true"] img {
+  width: 5.75rem;
+  height: 5.75rem;
+  margin-block: -0.55rem -0.85rem;
+  object-fit: contain;
+}
+
 .identityHeader span {
+  position: relative;
+  z-index: 1;
   font-size: var(--type-app-label);
   font-weight: var(--weight-semibold);
+}
+
+.identityHeader[data-saved="true"] span {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.82);
+  color: #00356b;
+  backdrop-filter: blur(4px);
 }
 
 .menuItems {

@@ -2,11 +2,45 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+  avatarBackgroundCssForRectangle,
+  findAvatarBackground
+} from "@/config/avatar-backgrounds";
+import {
+  readSavedAvatar,
+  SAVED_AVATAR_EVENT,
+  SAVED_AVATAR_STORAGE_KEY,
+  type SavedAvatar
+} from "@/lib/saved-avatar";
 import { useDropdown } from "./use-dropdown";
 import styles from "./profile-menu.module.css";
 
+const profileAvatarSrc = "/assets/landing%20avatar.png?v=20260719-1";
+
 export function ProfileMenu() {
   const { closeDropdown, closing, open, toggleDropdown, wrapperRef } = useDropdown();
+  const [savedAvatar, setSavedAvatar] = useState<SavedAvatar | null>(null);
+
+  useEffect(() => {
+    const syncSavedAvatar = () => setSavedAvatar(readSavedAvatar());
+    const syncStorage = (event: StorageEvent) => {
+      if (event.key === SAVED_AVATAR_STORAGE_KEY) syncSavedAvatar();
+    };
+
+    syncSavedAvatar();
+    window.addEventListener(SAVED_AVATAR_EVENT, syncSavedAvatar);
+    window.addEventListener("storage", syncStorage);
+    return () => {
+      window.removeEventListener(SAVED_AVATAR_EVENT, syncSavedAvatar);
+      window.removeEventListener("storage", syncStorage);
+    };
+  }, []);
+
+  const background = savedAvatar
+    ? findAvatarBackground(savedAvatar.backgroundId)
+    : null;
+  const avatarSrc = savedAvatar?.imageDataUrl ?? profileAvatarSrc;
 
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
@@ -15,15 +49,40 @@ export function ProfileMenu() {
         aria-label="Profile menu"
         className={styles.profileButton}
         onClick={toggleDropdown}
+        style={background ? { background: background.background } : undefined}
         type="button"
       >
-        <Image alt="" height={44} src="/assets/landing-avatar.png" width={49} />
+        <Image
+          alt=""
+          height={64}
+          src={avatarSrc}
+          unoptimized
+          width={64}
+        />
       </button>
 
       {open ? (
         <div className={`${styles.dropdown} ${closing ? styles.closing : ""}`}>
-          <div className={styles.identityHeader}>
-            <Image alt="" height={82} src="/assets/landing-avatar.png" width={92} />
+          <div
+            className={styles.identityHeader}
+            data-saved={savedAvatar ? "true" : "false"}
+            style={
+              background
+                ? {
+                    background: avatarBackgroundCssForRectangle(
+                      background.paint
+                    )
+                  }
+                : undefined
+            }
+          >
+            <Image
+              alt=""
+              height={92}
+              src={avatarSrc}
+              unoptimized
+              width={92}
+            />
             <span>My YaleMoji</span>
           </div>
           <div className={styles.menuItems}>

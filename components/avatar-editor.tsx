@@ -1,202 +1,585 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  backgroundColors,
-  backgroundGradients,
+  backgroundSections,
+  defaultAvatarBackground,
+  drawAvatarBackground,
   type AvatarBackgroundOption
 } from "@/config/avatar-backgrounds";
 import {
+  accessoryGroups,
   avatarCategories,
   avatarOptions,
   categoryLabels,
   createInitialSelections,
-  findAvatarOption,
+  facialHairOptions,
+  type AccessorySelections,
   type AvatarCategory,
   type AvatarOption,
   type AvatarSelections
 } from "@/config/avatar-options";
 import {
   hairPalettes,
-  neutralSkinPalette,
   skinPalettes,
   type AvatarPalette
 } from "@/config/avatar-palettes";
-import { AvatarCanvas } from "./avatar-canvas";
+import {
+  findOpaquePixelBounds,
+  fitBoundsInsideSquare
+} from "@/lib/avatar-image-fit";
+import { saveAvatarLocally } from "@/lib/saved-avatar";
+import {
+  AvatarCanvas,
+  createAvatarLayers
+} from "./avatar-canvas";
+import {
+  loadAvatarSvg,
+  namespaceAvatarSvg
+} from "./avatar-layer";
 import { AvatarOptionGrid } from "./avatar-option-grid";
 import styles from "./avatar-editor.module.css";
 
+const EXPORT_SIZE = 1080;
+const EXPORT_AVATAR_SIZE = 900;
+type PngAction = "download-background" | "download-transparent" | "save";
+
+function initialSelections(): AvatarSelections {
+  const selections = createInitialSelections();
+  selections.hair = null;
+  selections.eyes = null;
+  selections.brows = null;
+  selections.mouth = null;
+  return selections;
+}
+
+function SectionHeading({
+  label,
+  onClear
+}: {
+  label: string;
+  onClear?: () => void;
+}) {
+  return (
+    <div className={styles.sectionHeading}>
+      <h2>{label}</h2>
+      {onClear ? (
+        <button onClick={onClear} type="button">
+          Clear
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function PalettePicker({
+  label,
+  onSelect,
+  options,
+  selected
+}: {
+  label: string;
+  onSelect: (palette: AvatarPalette) => void;
+  options: readonly AvatarPalette[];
+  selected: AvatarPalette;
+}) {
+  return (
+    <div aria-label={`${label} color`} className={styles.swatches} role="group">
+      {options.map((palette) => (
+        <button
+          aria-label={`Select color ${palette.id}`}
+          aria-pressed={selected.id === palette.id}
+          className={styles.swatch}
+          key={palette.id}
+          onClick={() => onSelect(palette)}
+          style={{ backgroundColor: palette.primary }}
+          type="button"
+        />
+      ))}
+    </div>
+  );
+}
+
+function replacePaletteVariables(
+  markup: string,
+  palette: AvatarPalette | undefined
+) {
+  if (!palette) return markup;
+  return markup
+    .replaceAll("var(--avatar-primary)", palette.primary)
+    .replaceAll("var(--avatar-secondary)", palette.secondary);
+}
+
+function innerSvg(markup: string) {
+  return markup
+    .replace(/[\s\S]*?<svg[^>]*>/, "")
+    .replace(/<\/svg>[\s\S]*/, "")
+    .trim();
+}
+
+async function renderAvatarPng({
+  accessories,
+  background,
+  facialHairId,
+  hairPalette,
+  selections,
+  skinPalette
+}: {
+  accessories: AccessorySelections;
+  background?: AvatarBackgroundOption;
+  facialHairId: string | null;
+  hairPalette: AvatarPalette;
+  selections: AvatarSelections;
+  skinPalette: AvatarPalette;
+}) {
+  const canvas = document.createElement("canvas");
+  canvas.width = EXPORT_SIZE;
+  canvas.height = EXPORT_SIZE;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas export is unavailable.");
+
+  if (background) {
+    drawAvatarBackground(context, background.paint, EXPORT_SIZE);
+  }
+  const layers = createAvatarLayers(selections, accessories, facialHairId);
+  const bodies = await Promise.all(
+    layers.map(async (layer, index) => {
+      const markup = await loadAvatarSvg(layer.src);
+      const palette =
+        layer.palette === "skin"
+          ? skinPalette
+          : layer.palette === "hair"
+            ? hairPalette
+            : undefined;
+      return innerSvg(
+        namespaceAvatarSvg(
+          replacePaletteVariables(markup, palette),
+          `export-${index}`
+        )
+      );
+    })
+  );
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${EXPORT_AVATAR_SIZE}" height="${EXPORT_AVATAR_SIZE}" viewBox="0 0 502 502" fill="none">${bodies.join("")}</svg>`;
+  const image = new Image();
+
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("Could not render the YaleMoji."));
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  });
+
+  if (background) {
+    const inset = (EXPORT_SIZE - EXPORT_AVATAR_SIZE) / 2;
+    context.drawImage(
+      image,
+      inset,
+      inset,
+      EXPORT_AVATAR_SIZE,
+      EXPORT_AVATAR_SIZE
+    );
+  } else {
+    const sourceCanvas = document.createElement("canvas");
+    sourceCanvas.width = EXPORT_SIZE;
+    sourceCanvas.height = EXPORT_SIZE;
+    const sourceContext = sourceCanvas.getContext("2d", {
+      willReadFrequently: true
+    });
+    if (!sourceContext) throw new Error("Canvas export is unavailable.");
+
+    sourceContext.drawImage(image, 0, 0, EXPORT_SIZE, EXPORT_SIZE);
+    const pixels = sourceContext.getImageData(
+      0,
+      0,
+      EXPORT_SIZE,
+      EXPORT_SIZE
+    );
+    const sourceBounds = findOpaquePixelBounds(
+      pixels.data,
+      EXPORT_SIZE,
+      EXPORT_SIZE
+    );
+    if (!sourceBounds) throw new Error("The YaleMoji has no visible artwork.");
+
+    const destination = fitBoundsInsideSquare(
+      sourceBounds,
+      EXPORT_SIZE,
+      0.1
+    );
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(
+      sourceCanvas,
+      sourceBounds.x,
+      sourceBounds.y,
+      sourceBounds.width,
+      sourceBounds.height,
+      destination.x,
+      destination.y,
+      destination.width,
+      destination.height
+    );
+  }
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/png")
+  );
+  if (!blob) throw new Error("Could not create the PNG.");
+  return blob;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(href);
+}
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      typeof reader.result === "string"
+        ? resolve(reader.result)
+        : reject(new Error("Could not store the PNG."));
+    reader.onerror = () => reject(new Error("Could not store the PNG."));
+    reader.readAsDataURL(blob);
+  });
+}
+
 export function AvatarEditor() {
   const [category, setCategory] = useState<AvatarCategory>("face");
-  const [skinPalette, setSkinPalette] = useState<AvatarPalette>(skinPalettes[0]);
-  const [hairPalette, setHairPalette] = useState<AvatarPalette | null>(hairPalettes[0] ?? null);
-  const [backgroundOption, setBackgroundOption] = useState<AvatarBackgroundOption | null>(null);
-  const [selections, setSelections] = useState<AvatarSelections>(createInitialSelections);
-  const [expanded, setExpanded] = useState(true);
-  const [active, setActive] = useState(false);
+  const [skinPalette, setSkinPalette] = useState<AvatarPalette>(skinPalettes[2]);
+  const [hairPalette, setHairPalette] = useState<AvatarPalette>(hairPalettes[0]);
+  const [backgroundOption, setBackgroundOption] =
+    useState<AvatarBackgroundOption>(defaultAvatarBackground);
+  const [selections, setSelections] =
+    useState<AvatarSelections>(initialSelections);
+  const [facialHairId, setFacialHairId] = useState<string | null>(null);
+  const [accessories, setAccessories] = useState<AccessorySelections>({});
+  const [pendingAction, setPendingAction] = useState<PngAction | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  const palettes = category === "face" ? skinPalettes : category === "hair" ? hairPalettes : [];
   const selectedPalette = category === "hair" ? hairPalette : skinPalette;
-
-  function selectPalette(palette: AvatarPalette) {
-    if (category === "hair") setHairPalette(palette);
-    if (category === "face") setSkinPalette(palette);
-    setActive(true);
-  }
+  const options = avatarOptions[category];
+  const canvasStyle = useMemo(
+    () => ({ background: backgroundOption.background }),
+    [backgroundOption]
+  );
 
   function selectOption(option: AvatarOption) {
-    setSelections((current) => ({ ...current, [category]: option.id }));
-    setActive(true);
+    setSelections((current) => ({
+      ...current,
+      [category]:
+        category !== "face" && current[category] === option.id
+          ? null
+          : option.id
+    }));
   }
 
-  function selectBackground(option: AvatarBackgroundOption) {
-    setBackgroundOption(option);
-    setActive(true);
+  function selectAccessory(type: keyof AccessorySelections, option: AvatarOption) {
+    setAccessories((current) => {
+      const next = { ...current };
+      if (next[type] === option.id) delete next[type];
+      else next[type] = option.id;
+      return next;
+    });
   }
 
-  const categoryIndex = avatarCategories.indexOf(category);
+  async function runPngAction(action: PngAction) {
+    if (pendingAction) return;
+    setPendingAction(action);
+    setExportError(null);
+    setSaveMessage(null);
+    try {
+      const blob = await renderAvatarPng({
+        accessories,
+        background:
+          action === "download-background" ? backgroundOption : undefined,
+        facialHairId,
+        hairPalette,
+        selections,
+        skinPalette
+      });
 
-  function moveCategory(offset: -1 | 1) {
-    const nextCategory = avatarCategories[categoryIndex + offset];
-    if (nextCategory) setCategory(nextCategory);
+      if (action === "save") {
+        saveAvatarLocally({
+          backgroundId: backgroundOption.id,
+          imageDataUrl: await blobToDataUrl(blob),
+          savedAt: new Date().toISOString()
+        });
+        setSaveMessage("Saved locally");
+      } else {
+        downloadBlob(
+          blob,
+          action === "download-transparent"
+            ? "yalemoji-transparent.png"
+            : "yalemoji.png"
+        );
+      }
+    } catch (error) {
+      setExportError(
+        error instanceof Error ? error.message : "The PNG could not be created."
+      );
+    } finally {
+      setPendingAction(null);
+    }
   }
 
   return (
     <section className={styles.page} aria-labelledby="editor-title">
-      <div className={styles.editor}>
-        <div className={styles.topControls}>
-          <Link aria-label="Close editor" className={styles.close} href="/">×</Link>
-          <button
-            aria-expanded={expanded}
-            aria-label={expanded ? "Collapse customization controls" : "Expand customization controls"}
-            className={styles.collapse}
-            onClick={() => setExpanded((value) => !value)}
-            type="button"
+      <h1 className={styles.srOnly} id="editor-title">
+        YaleMoji editor
+      </h1>
+      <div aria-hidden className={styles.campus} />
+
+      <div className={styles.workspace}>
+        <div className={styles.previewColumn}>
+          <div
+            aria-label="Preview of your YaleMoji"
+            className={styles.canvasCard}
+            role="img"
+            style={canvasStyle}
           >
-            <span aria-hidden="true">⌄</span>
-          </button>
-        </div>
-
-        <div className={styles.identity}>
-          <div aria-label="Preview of your YaleMoji" className={styles.face} role="img">
-            <AvatarCanvas
-              active={active}
-              backgroundOption={backgroundOption}
-              fallback
-              hairPalette={hairPalette}
-              selections={selections}
-              skinPalette={active ? skinPalette : neutralSkinPalette}
+            <div
+              className={styles.background}
+              data-avatar-layer="background"
+              data-background-option={backgroundOption.id}
+              style={canvasStyle}
             />
+            <div aria-hidden className={styles.dotGrid} />
+            <div className={styles.avatar}>
+              <AvatarCanvas
+                accessories={accessories}
+                facialHairId={facialHairId}
+                hairPalette={hairPalette}
+                selections={selections}
+                skinPalette={skinPalette}
+              />
+            </div>
           </div>
-          <h1 className={styles.name} id="editor-title">My YaleMoji</h1>
         </div>
 
-        {expanded ? (
-          <div className={styles.customizer}>
-            <div aria-label="Avatar feature" className={styles.tabs} role="tablist">
-              {avatarCategories.map((item) => (
-                <button
-                  aria-selected={category === item}
-                  className={styles.tab}
-                  data-active={category === item}
-                  key={item}
-                  onClick={() => setCategory(item)}
-                  role="tab"
-                  type="button"
-                >
-                  {categoryLabels[item]}
-                </button>
-              ))}
-            </div>
+        <aside className={styles.panel} aria-label="YaleMoji customization">
+          <div aria-label="Avatar feature" className={styles.tabs} role="tablist">
+            {avatarCategories.map((item) => (
+              <button
+                aria-selected={category === item}
+                className={styles.tab}
+                data-active={category === item}
+                key={item}
+                onClick={() => setCategory(item)}
+                role="tab"
+                type="button"
+              >
+                <span aria-hidden>{categoryLabels[item]}</span>
+                {categoryLabels[item]}
+              </button>
+            ))}
+          </div>
 
-            {palettes.length > 0 ? (
-              <div aria-label={`${categoryLabels[category]} color`} className={styles.colors} role="group">
-                <span>Color:</span>
-                <div className={styles.swatches}>
-                  {palettes.map((palette) => (
-                    <button
-                      aria-label={`Select color ${palette.id}`}
-                      aria-pressed={selectedPalette?.id === palette.id}
-                      className={styles.swatch}
-                      key={palette.id}
-                      onClick={() => selectPalette(palette)}
-                      style={{ backgroundColor: palette.primary }}
-                      type="button"
-                    />
-                  ))}
+          <div className={styles.panelBody}>
+            {category === "face" ? (
+              <>
+                <PalettePicker
+                  label="Face"
+                  onSelect={setSkinPalette}
+                  options={skinPalettes}
+                  selected={skinPalette}
+                />
+                <AvatarOptionGrid
+                  category="face"
+                  onSelect={selectOption}
+                  options={options}
+                  palette={selectedPalette}
+                  selectedId={selections.face}
+                />
+              </>
+            ) : null}
+
+            {category === "eyes" ||
+            category === "brows" ||
+            category === "mouth" ? (
+              <AvatarOptionGrid
+                category={category}
+                onSelect={selectOption}
+                options={options}
+                selectedId={selections[category]}
+              />
+            ) : null}
+
+            {category === "hair" ? (
+              <>
+                <PalettePicker
+                  label="Hair"
+                  onSelect={setHairPalette}
+                  options={hairPalettes}
+                  selected={hairPalette}
+                />
+                <AvatarOptionGrid
+                  category="hair"
+                  onSelect={selectOption}
+                  options={options}
+                  palette={hairPalette}
+                  selectedId={selections.hair}
+                  skinPalette={skinPalette}
+                />
+                <div className={styles.optionSection}>
+                  <SectionHeading
+                    label="Facial Hair"
+                    onClear={
+                      facialHairId ? () => setFacialHairId(null) : undefined
+                    }
+                  />
+                  <AvatarOptionGrid
+                    category="hair"
+                    onSelect={(option) =>
+                      setFacialHairId((current) =>
+                        current === option.id ? null : option.id
+                      )
+                    }
+                    options={facialHairOptions}
+                    palette={hairPalette}
+                    selectedId={facialHairId}
+                    skinPalette={skinPalette}
+                  />
                 </div>
+              </>
+            ) : null}
+
+            {category === "accessories" ? (
+              <div className={styles.accessorySections}>
+                {accessoryGroups.map((group) => (
+                  <section key={group.id}>
+                    <SectionHeading
+                      label={group.label}
+                      onClear={
+                        accessories[group.id]
+                          ? () =>
+                              setAccessories((current) => {
+                                const next = { ...current };
+                                delete next[group.id];
+                                return next;
+                              })
+                          : undefined
+                      }
+                    />
+                    <AvatarOptionGrid
+                      category="accessories"
+                      onSelect={(option) => selectAccessory(group.id, option)}
+                      options={group.options}
+                      selectedId={accessories[group.id] ?? null}
+                    />
+                  </section>
+                ))}
               </div>
             ) : null}
 
             {category === "background" ? (
-              <div className={styles.backgroundControls}>
-                <div aria-label="Background color" className={styles.colors} role="group">
-                  <span>Solid:</span>
-                  <div className={styles.swatches}>
-                    {backgroundColors.map((color) => (
-                      <button
-                        aria-label={`Select ${color.label} background`}
-                        aria-pressed={backgroundOption?.id === color.id}
-                        className={styles.swatch}
-                        key={color.id}
-                        onClick={() => selectBackground(color)}
-                        style={{ background: color.background }}
-                        type="button"
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div aria-label="Background gradient" className={styles.colors} role="group">
-                  <span>Gradients:</span>
-                  <div className={styles.swatches}>
-                    {backgroundGradients.map((gradient) => (
-                      <button
-                        aria-label={`Select ${gradient.label} gradient background`}
-                        aria-pressed={backgroundOption?.id === gradient.id}
-                        className={styles.swatch}
-                        key={gradient.id}
-                        onClick={() => selectBackground(gradient)}
-                        style={{ background: gradient.background }}
-                        type="button"
-                      />
-                    ))}
-                  </div>
-                </div>
+              <div className={styles.backgroundSections}>
+                {backgroundSections.map((section) => (
+                  <section key={section.id}>
+                    <SectionHeading label={section.label} />
+                    <div
+                      aria-label={`Background ${section.label.toLowerCase()}`}
+                      className={styles.backgroundOptions}
+                      role="group"
+                    >
+                      {section.options.map((option) => (
+                        <button
+                          aria-label={`Select ${option.label} background`}
+                          aria-pressed={backgroundOption.id === option.id}
+                          className={styles.backgroundSwatch}
+                          key={option.id}
+                          onClick={() => setBackgroundOption(option)}
+                          style={{ background: option.background }}
+                          title={option.label}
+                          type="button"
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))}
               </div>
-            ) : (
-              <AvatarOptionGrid
-                category={category}
-                faceOption={findAvatarOption("face", selections.face)}
-                onSelect={selectOption}
-                options={avatarOptions[category]}
-                palette={selectedPalette ?? undefined}
-                selectedId={selections[category]}
-                skinPalette={skinPalette}
-              />
-            )}
+            ) : null}
+          </div>
 
-            <div className={styles.actions}>
+          <div className={styles.panelFooter}>
+            {exportError ? (
+              <p className={styles.exportError} role="alert">
+                {exportError}
+              </p>
+            ) : saveMessage ? (
+              <p className={styles.saveMessage} role="status">
+                {saveMessage}
+              </p>
+            ) : (
+              <span />
+            )}
+            <div className={styles.footerActions}>
               <button
-                className={styles.back}
-                disabled={categoryIndex === 0}
-                onClick={() => moveCategory(-1)}
+                aria-label="Download transparent PNG"
+                className={`${styles.export} ${styles.secondaryAction}`}
+                disabled={pendingAction !== null}
+                onClick={() => runPngAction("download-transparent")}
+                title="Download transparent PNG"
                 type="button"
               >
-                Back
+                <svg
+                  aria-hidden
+                  fill="none"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
+                  <path d="M12 4v13" />
+                  <path d="m6 11 6 6 6-6" />
+                  <path d="M5 21h14" />
+                </svg>
               </button>
               <button
-                className={styles.next}
-                disabled={categoryIndex === avatarCategories.length - 1}
-                onClick={() => moveCategory(1)}
+                aria-label="Download PNG with background"
+                className={styles.export}
+                disabled={pendingAction !== null}
+                onClick={() => runPngAction("download-background")}
+                title="Download PNG with background"
                 type="button"
               >
-                Next
+                <svg
+                  aria-hidden
+                  fill="none"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
+                  <path d="M12 4v13" />
+                  <path d="m6 11 6 6 6-6" />
+                </svg>
+              </button>
+              <button
+                aria-label="Save avatar locally"
+                className={`${styles.export} ${styles.saveAction}`}
+                disabled={pendingAction !== null}
+                onClick={() => runPngAction("save")}
+                title="Save avatar locally"
+                type="button"
+              >
+                <svg
+                  aria-hidden
+                  fill="none"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
+                  <path d="M5 4h12l2 2v14H5z" />
+                  <path d="M8 4v6h8V4" />
+                  <path d="M8 20v-6h8v6" />
+                </svg>
               </button>
             </div>
           </div>
-        ) : null}
+        </aside>
       </div>
     </section>
   );

@@ -6,7 +6,6 @@ import styles from "./avatar-option-grid.module.css";
 
 type AvatarOptionGridProps = {
   category: AvatarCategory;
-  faceOption?: AvatarOption | null;
   onSelect: (option: AvatarOption) => void;
   options: readonly AvatarOption[];
   palette?: AvatarPalette;
@@ -16,7 +15,6 @@ type AvatarOptionGridProps = {
 
 export function AvatarOptionGrid({
   category,
-  faceOption,
   onSelect,
   options,
   palette,
@@ -26,7 +24,7 @@ export function AvatarOptionGrid({
   if (options.length === 0) {
     return (
       <p className={styles.empty} role="status">
-        Add SVGs to <code>public/avatar/{category}/</code>, then list them in{" "}
+        Add SVGs to <code>public/yalemoji/{category}/</code>, then list them in{" "}
         <code>config/avatar-options.ts</code>.
       </p>
     );
@@ -64,15 +62,6 @@ export function AvatarOptionGrid({
                     <AvatarLayer src={option.backSrc} />
                   </span>
                 ) : null}
-                {faceOption ? (
-                  <span
-                    className={`${styles.previewLayer} ${styles.face}`}
-                    data-avatar-option={faceOption.id}
-                    data-preview-layer="face"
-                  >
-                    <AvatarLayer src={faceOption.src} />
-                  </span>
-                ) : null}
                 <span
                   className={`${styles.previewLayer} ${styles.hairFront}`}
                   data-preview-layer="hair-front"
@@ -81,11 +70,14 @@ export function AvatarOptionGrid({
                     "--avatar-secondary": palette.secondary
                   } as CSSProperties : undefined}
                 >
-                  <AvatarLayer src={option.frontSrc ?? option.src} />
+                  <AvatarLayer
+                    fit={option.src.startsWith("/yalemoji/FacialHair/")}
+                    src={option.frontSrc ?? option.src}
+                  />
                 </span>
               </>
             ) : (
-              <AvatarLayer src={option.src} />
+              <AvatarLayer fit={category !== "face"} src={option.src} />
             )}
           </span>
         </button>
