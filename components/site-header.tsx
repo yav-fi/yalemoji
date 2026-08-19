@@ -4,7 +4,7 @@ import { ProfileMenu } from "./profile-menu";
 import { Wordmark } from "./wordmark";
 import styles from "./site-header.module.css";
 
-export function SiteHeader() {
+export function SiteHeader({ netid }: { netid: string }) {
   return (
     <header className={styles.header}>
       <div className={styles.inner}>
@@ -18,7 +18,7 @@ export function SiteHeader() {
           </div>
           <div className={styles.accountControls}>
             <AppsDropdown />
-            <ProfileMenu />
+            <ProfileMenu netid={netid} />
           </div>
         </nav>
       </div>

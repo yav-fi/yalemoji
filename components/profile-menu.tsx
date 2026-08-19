@@ -18,7 +18,7 @@ import styles from "./profile-menu.module.css";
 
 const profileAvatarSrc = "/assets/landing%20avatar.png?v=20260719-1";
 
-export function ProfileMenu() {
+export function ProfileMenu({ netid }: { netid: string }) {
   const { closeDropdown, closing, open, toggleDropdown, wrapperRef } = useDropdown();
   const [savedAvatar, setSavedAvatar] = useState<SavedAvatar | null>(null);
 
@@ -83,13 +83,16 @@ export function ProfileMenu() {
               unoptimized
               width={92}
             />
-            <span>My YaleMoji</span>
+            <span>{netid}</span>
           </div>
           <div className={styles.menuItems}>
             <Link className={styles.dropdownItem} href="/editor" onClick={closeDropdown}>
               Editor
             </Link>
             <span className={styles.dropdownItem}>My Library</span>
+            <a className={styles.dropdownItem} href="/api/auth/logout">
+              Log out
+            </a>
           </div>
         </div>
       ) : null}

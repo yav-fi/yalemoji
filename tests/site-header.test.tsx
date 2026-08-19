@@ -9,7 +9,7 @@ describe("SiteHeader", () => {
   });
 
   it("opens the Yale apps panel from the waffle", () => {
-    render(<SiteHeader />);
+    render(<SiteHeader netid="abc123" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Yale apps" }));
 
@@ -22,11 +22,15 @@ describe("SiteHeader", () => {
   });
 
   it("opens the profile menu without linking My Library", () => {
-    render(<SiteHeader />);
+    render(<SiteHeader netid="abc123" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Profile menu" }));
 
-    expect(screen.getByText("My YaleMoji")).toBeInTheDocument();
+    expect(screen.getByText("abc123")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Log out" })).toHaveAttribute(
+      "href",
+      "/api/auth/logout"
+    );
     expect(screen.getAllByText("My Library")).toHaveLength(2);
     expect(screen.queryByRole("link", { name: "My Library" })).not.toBeInTheDocument();
   });
@@ -42,7 +46,7 @@ describe("SiteHeader", () => {
       })
     );
 
-    render(<SiteHeader />);
+    render(<SiteHeader netid="abc123" />);
     const profileButton = screen.getByRole("button", { name: "Profile menu" });
 
     await waitFor(() =>
@@ -57,7 +61,7 @@ describe("SiteHeader", () => {
     );
 
     fireEvent.click(profileButton);
-    expect(screen.getByText("My YaleMoji").parentElement).toHaveAttribute(
+    expect(screen.getByText("abc123").parentElement).toHaveAttribute(
       "data-saved",
       "true"
     );
