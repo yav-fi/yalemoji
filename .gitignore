@@ -2,6 +2,7 @@
 node_modules
 dist
 coverage
+*.tsbuildinfo
 .env*.local
 .env
 *service-account*.json

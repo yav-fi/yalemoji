@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AvatarEditor } from "@/components/avatar-editor";
-import { normalizeAvatarSvg } from "@/components/avatar-layer";
+import { normalizeAvatarSvg } from "@/lib/avatar-svg";
 
 describe("AvatarEditor", () => {
   beforeEach(() => {
@@ -38,7 +38,7 @@ describe("AvatarEditor", () => {
       screen.getByRole("button", { name: "Download transparent PNG" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Save avatar locally" })
+      screen.getByRole("button", { name: "Save avatar" })
     ).toBeInTheDocument();
   });
 
@@ -149,5 +149,52 @@ describe("AvatarEditor", () => {
 
     expect(normalized.match(/var\(--avatar-primary\)/g)).toHaveLength(2);
     expect(normalized).toContain('stroke="var(--avatar-secondary)"');
+  });
+
+  it("saves by posting the current config to the server and shows the returned version", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input) === "/api/avatar") {
+          expect(init?.method).toBe("POST");
+          const body = JSON.parse(String(init?.body));
+          expect(body).toHaveProperty("selections");
+          expect(body).toHaveProperty("skinPaletteId");
+          expect(body).toHaveProperty("backgroundId");
+          return Promise.resolve(
+            new Response(JSON.stringify({ version: 3, pngUrl: "x", svgUrl: "y" }), {
+              status: 200
+            })
+          );
+        }
+        return new Promise<Response>(() => {});
+      })
+    );
+
+    render(<AvatarEditor />);
+    fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
+
+    expect(await screen.findByText("Saved (v3)")).toBeInTheDocument();
+  });
+
+  it("shows a friendly message when saving is rate limited", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        if (String(input) === "/api/avatar") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ error: "rate_limited", retryAfterSeconds: 120 }), {
+              status: 429
+            })
+          );
+        }
+        return new Promise<Response>(() => {});
+      })
+    );
+
+    render(<AvatarEditor />);
+    fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("2 minute(s)");
   });
 });

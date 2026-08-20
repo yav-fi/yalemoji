@@ -4,7 +4,13 @@ import { ProfileMenu } from "./profile-menu";
 import { Wordmark } from "./wordmark";
 import styles from "./site-header.module.css";
 
-export function SiteHeader({ netid }: { netid: string }) {
+export function SiteHeader({
+  avatarUrl,
+  netid
+}: {
+  avatarUrl: string | null;
+  netid: string;
+}) {
   return (
     <header className={styles.header}>
       <div className={styles.inner}>
@@ -14,11 +20,10 @@ export function SiteHeader({ netid }: { netid: string }) {
             <Link aria-current="page" className={styles.active} href="/editor">
               Editor
             </Link>
-            <span>My Library</span>
           </div>
           <div className={styles.accountControls}>
             <AppsDropdown />
-            <ProfileMenu netid={netid} />
+            <ProfileMenu avatarUrl={avatarUrl} netid={netid} />
           </div>
         </nav>
       </div>

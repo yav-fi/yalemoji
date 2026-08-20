@@ -28,15 +28,12 @@ import {
   findOpaquePixelBounds,
   fitBoundsInsideSquare
 } from "@/lib/avatar-image-fit";
-import { saveAvatarLocally } from "@/lib/saved-avatar";
+import { innerSvg, namespaceAvatarSvg, replacePaletteVariables } from "@/lib/avatar-svg";
 import {
   AvatarCanvas,
   createAvatarLayers
 } from "./avatar-canvas";
-import {
-  loadAvatarSvg,
-  namespaceAvatarSvg
-} from "./avatar-layer";
+import { loadAvatarSvg } from "./avatar-layer";
 import { AvatarOptionGrid } from "./avatar-option-grid";
 import styles from "./avatar-editor.module.css";
 
@@ -98,23 +95,6 @@ function PalettePicker({
       ))}
     </div>
   );
-}
-
-function replacePaletteVariables(
-  markup: string,
-  palette: AvatarPalette | undefined
-) {
-  if (!palette) return markup;
-  return markup
-    .replaceAll("var(--avatar-primary)", palette.primary)
-    .replaceAll("var(--avatar-secondary)", palette.secondary);
-}
-
-function innerSvg(markup: string) {
-  return markup
-    .replace(/[\s\S]*?<svg[^>]*>/, "")
-    .replace(/<\/svg>[\s\S]*/, "")
-    .trim();
 }
 
 async function renderAvatarPng({
@@ -235,16 +215,20 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(href);
 }
 
-function blobToDataUrl(blob: Blob) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () =>
-      typeof reader.result === "string"
-        ? resolve(reader.result)
-        : reject(new Error("Could not store the PNG."));
-    reader.onerror = () => reject(new Error("Could not store the PNG."));
-    reader.readAsDataURL(blob);
-  });
+function isSaveBody(body: unknown): body is { version: number } {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    typeof (body as { version?: unknown }).version === "number"
+  );
+}
+
+function isRateLimitBody(body: unknown): body is { retryAfterSeconds: number } {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    typeof (body as { retryAfterSeconds?: unknown }).retryAfterSeconds === "number"
+  );
 }
 
 export function AvatarEditor() {
@@ -287,30 +271,54 @@ export function AvatarEditor() {
     });
   }
 
+  async function saveAvatar() {
+    const response = await fetch("/api/avatar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        selections,
+        accessories,
+        facialHairId,
+        skinPaletteId: skinPalette.id,
+        hairPaletteId: hairPalette.id,
+        backgroundId: backgroundOption.id
+      })
+    });
+
+    const body: unknown = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      if (response.status === 429 && isRateLimitBody(body)) {
+        throw new Error(
+          `You're saving too often. Try again in about ${Math.ceil(
+            body.retryAfterSeconds / 60
+          )} minute(s).`
+        );
+      }
+      throw new Error("Your YaleMoji could not be saved.");
+    }
+
+    setSaveMessage(`Saved (v${isSaveBody(body) ? body.version : "?"})`);
+  }
+
   async function runPngAction(action: PngAction) {
     if (pendingAction) return;
     setPendingAction(action);
     setExportError(null);
     setSaveMessage(null);
     try {
-      const blob = await renderAvatarPng({
-        accessories,
-        background:
-          action === "download-background" ? backgroundOption : undefined,
-        facialHairId,
-        hairPalette,
-        selections,
-        skinPalette
-      });
-
       if (action === "save") {
-        saveAvatarLocally({
-          backgroundId: backgroundOption.id,
-          imageDataUrl: await blobToDataUrl(blob),
-          savedAt: new Date().toISOString()
-        });
-        setSaveMessage("Saved locally");
+        await saveAvatar();
       } else {
+        const blob = await renderAvatarPng({
+          accessories,
+          background:
+            action === "download-background" ? backgroundOption : undefined,
+          facialHairId,
+          hairPalette,
+          selections,
+          skinPalette
+        });
         downloadBlob(
           blob,
           action === "download-transparent"
@@ -558,11 +566,11 @@ export function AvatarEditor() {
                 </svg>
               </button>
               <button
-                aria-label="Save avatar locally"
+                aria-label="Save avatar"
                 className={`${styles.export} ${styles.saveAction}`}
                 disabled={pendingAction !== null}
                 onClick={() => runPngAction("save")}
-                title="Save avatar locally"
+                title="Save avatar"
                 type="button"
               >
                 <svg

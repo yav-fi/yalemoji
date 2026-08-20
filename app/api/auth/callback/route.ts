@@ -7,6 +7,7 @@ import {
   SESSION_TTL_SECONDS,
   verifyYaliesAssertion
 } from "@/lib/auth";
+import { recordLogin } from "@/lib/avatar-store";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,12 @@ export async function GET(request: NextRequest) {
     return clearState(
       NextResponse.json({ error: "authentication_failed" }, { status: 401 })
     );
+  }
+
+  try {
+    await recordLogin(user.netid);
+  } catch (error) {
+    console.error("Failed to record login", error);
   }
 
   const response = clearState(

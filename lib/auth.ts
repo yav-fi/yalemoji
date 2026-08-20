@@ -38,7 +38,7 @@ function isInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value);
 }
 
-function isValidNetid(value: unknown): value is string {
+export function isValidNetid(value: unknown): value is string {
   return typeof value === "string" && NETID_PATTERN.test(value);
 }
 

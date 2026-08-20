@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@google-cloud/firestore": "^8.6.0",
+    "@google-cloud/storage": "^8.0.1",
+    "@napi-rs/canvas": "^1.0.7",
     "next": "^16.2.9",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
