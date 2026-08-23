@@ -4,7 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 
 describe("SiteHeader", () => {
   it("opens the Yale apps panel from the waffle", () => {
-    render(<SiteHeader avatarUrl={null} netid="abc123" />);
+    render(<SiteHeader avatarBackgroundUrl={null} avatarUrl={null} netid="abc123" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Yale apps" }));
 
@@ -17,14 +17,14 @@ describe("SiteHeader", () => {
   });
 
   it("does not render a My Library item anywhere", () => {
-    render(<SiteHeader avatarUrl={null} netid="abc123" />);
+    render(<SiteHeader avatarBackgroundUrl={null} avatarUrl={null} netid="abc123" />);
     fireEvent.click(screen.getByRole("button", { name: "Profile menu" }));
 
     expect(screen.queryByText("My Library")).not.toBeInTheDocument();
   });
 
   it("opens the profile menu with the signed-in netid and a working logout link", () => {
-    render(<SiteHeader avatarUrl={null} netid="abc123" />);
+    render(<SiteHeader avatarBackgroundUrl={null} avatarUrl={null} netid="abc123" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Profile menu" }));
 
@@ -35,9 +35,10 @@ describe("SiteHeader", () => {
     );
   });
 
-  it("renders the saved avatar image when one is provided", () => {
+  it("renders the saved avatar face image when one is provided", () => {
     render(
       <SiteHeader
+        avatarBackgroundUrl={null}
         avatarUrl="https://storage.googleapis.com/yalemoji-assets/avatars/abc/1/avatar.png"
         netid="abc123"
       />
@@ -48,5 +49,25 @@ describe("SiteHeader", () => {
       "src",
       "https://storage.googleapis.com/yalemoji-assets/avatars/abc/1/avatar.png"
     );
+  });
+
+  it("layers the background SVG behind the face in both the button and the open dropdown", () => {
+    const backgroundUrl = "https://storage.googleapis.com/yalemoji-assets/avatars/abc/1/background.svg";
+    const avatarUrl = "https://storage.googleapis.com/yalemoji-assets/avatars/abc/1/avatar.png";
+
+    render(<SiteHeader avatarBackgroundUrl={backgroundUrl} avatarUrl={avatarUrl} netid="abc123" />);
+
+    const profileButton = screen.getByRole("button", { name: "Profile menu" });
+    const buttonImages = profileButton.querySelectorAll("img");
+    expect(buttonImages).toHaveLength(2);
+    expect(buttonImages[0]).toHaveAttribute("src", backgroundUrl);
+    expect(buttonImages[1]).toHaveAttribute("src", avatarUrl);
+
+    fireEvent.click(profileButton);
+    const dropdown = screen.getByText("abc123").closest("div");
+    const dropdownImages = dropdown?.querySelectorAll("img") ?? [];
+    expect(dropdownImages).toHaveLength(2);
+    expect(dropdownImages[0]).toHaveAttribute("src", backgroundUrl);
+    expect(dropdownImages[1]).toHaveAttribute("src", avatarUrl);
   });
 });

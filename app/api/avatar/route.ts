@@ -41,17 +41,24 @@ export async function POST(request: NextRequest) {
   try {
     const avatarId = getAvatarId(user.netid);
     const version = await reserveNextVersion(user.netid);
-    const { svg, png } = await renderAvatarAssets(config);
-    const { svgUrl, pngUrl } = await uploadAvatarAssets(avatarId, version, svg, png);
+    const { svg, png, backgroundSvg } = await renderAvatarAssets(config);
+    const { svgUrl, pngUrl, backgroundUrl } = await uploadAvatarAssets(
+      avatarId,
+      version,
+      svg,
+      png,
+      backgroundSvg
+    );
 
     await commitAvatarVersion(user.netid, version, {
       avatarId,
       config,
       pngUrl,
-      svgUrl
+      svgUrl,
+      backgroundUrl
     });
 
-    return NextResponse.json({ version, pngUrl, svgUrl }, { status: 200 });
+    return NextResponse.json({ version, pngUrl, svgUrl, backgroundUrl }, { status: 200 });
   } catch (error) {
     console.error("Avatar save failed", error);
     return NextResponse.json({ error: "server_error" }, { status: 500 });

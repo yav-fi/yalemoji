@@ -63,24 +63,29 @@ gcloud run deploy yalemoji \
 - `waitlistSubmissions/{emailHash}` stores the normalized email, email hash, submission timestamp, IP hash, user agent, and source.
 - `rateLimits/{key}:{windowStart}` stores per-window attempt counters (waitlist submissions by IP hash, avatar saves by netid, avatar reads by IP hash) and expiry metadata.
 - `trafficPageViews/{autoId}` stores every page load with `ref`, IP hash, user agent, path, and timestamp. Visits without `?ref=` are stored as `none`; for example `/` logs `none`, while `/?ref=poster` logs `poster`.
-- `users/{netid}` stores the current avatar pointer: `avatarId` (a non-reversible id derived from the netid, used in storage paths so they don't leak netids), `avatarVersion`, `pngUrl`, `svgUrl`, and `updatedAt`.
+- `users/{netid}` stores login/identity metadata (`firstSeenAt`, `lastLoginAt`, set on every login) and the current avatar pointer: `avatarId` (a non-reversible id derived from the netid, used in storage paths so they don't leak netids), `avatarVersion`, `pngUrl`, `svgUrl`, `backgroundUrl`, and `updatedAt`.
 - `users/{netid}/avatars/{version}` stores the full history: the canonical `config` (selections/accessories/palette/background ids) that produced that version, its asset URLs, and `createdAt`.
 
 Duplicate submissions return success so the API cannot be used to enumerate emails.
 
 ## Avatar rendering and storage
 
-The browser never uploads image bytes. The editor (`/editor`) submits the user's *choices* — option ids for face/hair/eyes/etc, palette ids, background id — to `POST /api/avatar`. The server validates every id against the known option sets (`lib/avatar-config.ts`), re-renders the SVG and a 512×512 PNG from the same source art the editor uses (`lib/avatar-render.ts`), and uploads both as **immutable, versioned** objects to Cloud Storage (`lib/avatar-storage.ts`) at `avatars/{avatarId}/{version}/avatar.{svg,png}` with a one-year immutable `Cache-Control` header. Firestore then tracks the current version per netid (`lib/avatar-store.ts`).
+The browser never uploads image bytes. The editor (`/editor`) submits the user's *choices* — option ids for face/hair/eyes/etc, palette ids, background id — to `POST /api/avatar`. The server validates every id against the known option sets (`lib/avatar-config.ts`) and renders three files from the same source art the editor uses (`lib/avatar-render.ts`, `config/avatar-backgrounds.ts`):
+
+- `avatar.svg` / `avatar.png` — the face only, transparent, 512×512. The background is deliberately **not** baked into these; they're the portable "who is this" asset.
+- `background.svg` — the chosen background rendered as a standalone, resolution-independent SVG (`preserveAspectRatio="none"`, gradients/patterns defined so they stay coherent when stretched to any aspect ratio, not just square). This is what lets the profile UI show the same background both as a small square swatch and stretched wide across the dropdown header, with no blur or distortion either way.
+
+All three are uploaded as **immutable, versioned** objects to Cloud Storage (`lib/avatar-storage.ts`) at `avatars/{avatarId}/{version}/{avatar.svg,avatar.png,background.svg}` with a one-year immutable `Cache-Control` header. Firestore then tracks the current version per netid (`lib/avatar-store.ts`).
 
 Saves are rate-limited per netid (20/hour) — generous for iterative editing, but bounded.
 
 Other Yale apps can consume a user's avatar without any YaleMoji-specific integration:
 
-- `GET /api/v1/users/{netid}` — `{ netid, avatar: { version, png_url, svg_url } }`, 404 if the user hasn't saved one yet. Cached 5 minutes.
+- `GET /api/v1/users/{netid}` — `{ netid, avatar: { version, png_url, svg_url, background_url } }`, 404 if the user hasn't saved one yet. Cached 5 minutes.
 - `GET /api/v1/users/{netid}/avatar` — just the avatar object.
-- `GET /avatar/{netid}.svg` or `/avatar/{netid}.png` — 302s straight to the current immutable asset, so `<img src="https://yalemoji.example/avatar/yaf23.svg">` works with zero API integration.
+- `GET /avatar/{netid}.svg` or `/avatar/{netid}.png` — 302s straight to the current immutable face asset, so `<img src="https://yalemoji.example/avatar/yaf23.svg">` works with zero API integration. (The background isn't exposed through this shorthand route — use the JSON APIs for `background_url`.)
 
-These read endpoints are unauthenticated and rate-limited per IP (300/min) since they're meant for programmatic consumption. YaleMoji never re-serves the image bytes itself — consumers load the returned `png_url`/`svg_url` directly from Cloud Storage/CDN.
+These read endpoints are unauthenticated and rate-limited per IP (300/min) since they're meant for programmatic consumption. YaleMoji never re-serves the image bytes itself — consumers load the returned URLs directly from Cloud Storage/CDN.
 
 ### One-time bucket setup
 

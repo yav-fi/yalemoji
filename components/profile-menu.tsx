@@ -8,13 +8,16 @@ import styles from "./profile-menu.module.css";
 const defaultAvatarSrc = "/assets/landing%20avatar.png?v=20260719-1";
 
 export function ProfileMenu({
+  avatarBackgroundUrl,
   avatarUrl,
   netid
 }: {
+  avatarBackgroundUrl: string | null;
   avatarUrl: string | null;
   netid: string;
 }) {
   const { closeDropdown, closing, open, toggleDropdown, wrapperRef } = useDropdown();
+  const hasAvatar = Boolean(avatarUrl);
   const avatarSrc = avatarUrl ?? defaultAvatarSrc;
 
   return (
@@ -26,8 +29,18 @@ export function ProfileMenu({
         onClick={toggleDropdown}
         type="button"
       >
+        {avatarBackgroundUrl ? (
+          <Image
+            alt=""
+            className={styles.backgroundLayer}
+            fill
+            src={avatarBackgroundUrl}
+            unoptimized
+          />
+        ) : null}
         <Image
           alt=""
+          className={styles.faceLayer}
           height={64}
           src={avatarSrc}
           unoptimized
@@ -37,9 +50,19 @@ export function ProfileMenu({
 
       {open ? (
         <div className={`${styles.dropdown} ${closing ? styles.closing : ""}`}>
-          <div className={styles.identityHeader} data-saved={avatarUrl ? "true" : "false"}>
+          <div className={styles.identityHeader} data-saved={hasAvatar ? "true" : "false"}>
+            {avatarBackgroundUrl ? (
+              <Image
+                alt=""
+                className={styles.backgroundLayer}
+                fill
+                src={avatarBackgroundUrl}
+                unoptimized
+              />
+            ) : null}
             <Image
               alt=""
+              className={styles.faceLayer}
               height={92}
               src={avatarSrc}
               unoptimized

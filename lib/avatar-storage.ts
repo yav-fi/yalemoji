@@ -18,13 +18,15 @@ export async function uploadAvatarAssets(
   avatarId: string,
   version: number,
   svg: string,
-  png: Buffer
-): Promise<{ svgUrl: string; pngUrl: string }> {
+  png: Buffer,
+  backgroundSvg: string
+): Promise<{ svgUrl: string; pngUrl: string; backgroundUrl: string }> {
   const bucket = getStorageClient().bucket(getBucketName());
   const prefix = `avatars/${avatarId}/${version}`;
 
   const svgFile = bucket.file(`${prefix}/avatar.svg`);
   const pngFile = bucket.file(`${prefix}/avatar.png`);
+  const backgroundFile = bucket.file(`${prefix}/background.svg`);
 
   const cacheControl = "public, max-age=31536000, immutable";
 
@@ -36,11 +38,16 @@ export async function uploadAvatarAssets(
     pngFile.save(png, {
       contentType: "image/png",
       metadata: { cacheControl }
+    }),
+    backgroundFile.save(backgroundSvg, {
+      contentType: "image/svg+xml",
+      metadata: { cacheControl }
     })
   ]);
 
   return {
     svgUrl: `https://storage.googleapis.com/${bucket.name}/${prefix}/avatar.svg`,
-    pngUrl: `https://storage.googleapis.com/${bucket.name}/${prefix}/avatar.png`
+    pngUrl: `https://storage.googleapis.com/${bucket.name}/${prefix}/avatar.png`,
+    backgroundUrl: `https://storage.googleapis.com/${bucket.name}/${prefix}/background.svg`
   };
 }

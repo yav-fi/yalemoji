@@ -2,11 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { createAvatarLayers } from "@/components/avatar-canvas";
-import {
-  drawAvatarBackground,
-  findAvatarBackground,
-  type AvatarBackgroundOption
-} from "@/config/avatar-backgrounds";
+import { avatarBackgroundSvg, findAvatarBackground } from "@/config/avatar-backgrounds";
 import { hairPalettes, skinPalettes, type AvatarPalette } from "@/config/avatar-palettes";
 import {
   innerSvg,
@@ -69,21 +65,16 @@ async function composeSubjectSvg(config: AvatarConfig) {
 
 export async function renderAvatarAssets(
   config: AvatarConfig
-): Promise<{ svg: string; png: Buffer }> {
+): Promise<{ svg: string; png: Buffer; backgroundSvg: string }> {
   const svg = await composeSubjectSvg(config);
-  const background: AvatarBackgroundOption = findAvatarBackground(config.backgroundId);
+  const background = findAvatarBackground(config.backgroundId);
+  const backgroundSvg = avatarBackgroundSvg(background.paint);
 
   const canvas = createCanvas(ASSET_SIZE, ASSET_SIZE);
   const context = canvas.getContext("2d");
-  drawAvatarBackground(
-    context as unknown as CanvasRenderingContext2D,
-    background.paint,
-    ASSET_SIZE
-  );
-
   const image = await loadImage(Buffer.from(svg));
   const inset = (ASSET_SIZE - AVATAR_SIZE) / 2;
   context.drawImage(image, inset, inset, AVATAR_SIZE, AVATAR_SIZE);
 
-  return { svg, png: canvas.toBuffer("image/png") };
+  return { svg, png: canvas.toBuffer("image/png"), backgroundSvg };
 }

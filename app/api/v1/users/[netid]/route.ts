@@ -38,7 +38,8 @@ export async function GET(
       avatar: {
         version: avatar.version,
         png_url: avatar.pngUrl,
-        svg_url: avatar.svgUrl
+        svg_url: avatar.svgUrl,
+        background_url: avatar.backgroundUrl
       }
     },
     { status: 200, headers: { "Cache-Control": "public, max-age=300" } }

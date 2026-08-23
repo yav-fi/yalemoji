@@ -5,9 +5,11 @@ import { Wordmark } from "./wordmark";
 import styles from "./site-header.module.css";
 
 export function SiteHeader({
+  avatarBackgroundUrl,
   avatarUrl,
   netid
 }: {
+  avatarBackgroundUrl: string | null;
   avatarUrl: string | null;
   netid: string;
 }) {
@@ -23,7 +25,11 @@ export function SiteHeader({
           </div>
           <div className={styles.accountControls}>
             <AppsDropdown />
-            <ProfileMenu avatarUrl={avatarUrl} netid={netid} />
+            <ProfileMenu
+              avatarBackgroundUrl={avatarBackgroundUrl}
+              avatarUrl={avatarUrl}
+              netid={netid}
+            />
           </div>
         </nav>
       </div>

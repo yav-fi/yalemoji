@@ -13,6 +13,7 @@ export type CurrentAvatar = {
   version: number;
   pngUrl: string;
   svgUrl: string;
+  backgroundUrl: string;
 };
 
 export function getAvatarId(netid: string): string {
@@ -124,7 +125,13 @@ export async function reserveNextVersion(
 export async function commitAvatarVersion(
   netid: string,
   version: number,
-  data: { avatarId: string; config: AvatarConfig; pngUrl: string; svgUrl: string },
+  data: {
+    avatarId: string;
+    config: AvatarConfig;
+    pngUrl: string;
+    svgUrl: string;
+    backgroundUrl: string;
+  },
   db: Firestore = getFirestore()
 ): Promise<void> {
   const userRef = db.collection("users").doc(netid);
@@ -140,6 +147,7 @@ export async function commitAvatarVersion(
         config: data.config,
         pngUrl: data.pngUrl,
         svgUrl: data.svgUrl,
+        backgroundUrl: data.backgroundUrl,
         createdAt: FieldValue.serverTimestamp()
       },
       { merge: true }
@@ -153,6 +161,7 @@ export async function commitAvatarVersion(
           avatarVersion: version,
           pngUrl: data.pngUrl,
           svgUrl: data.svgUrl,
+          backgroundUrl: data.backgroundUrl,
           updatedAt: FieldValue.serverTimestamp()
         },
         { merge: true }
@@ -171,8 +180,16 @@ export async function getCurrentAvatar(
   const version = Number(snapshot.get("avatarVersion") ?? 0);
   const pngUrl = snapshot.get("pngUrl");
   const svgUrl = snapshot.get("svgUrl");
+  const backgroundUrl = snapshot.get("backgroundUrl");
 
-  if (!version || typeof pngUrl !== "string" || typeof svgUrl !== "string") return null;
+  if (
+    !version ||
+    typeof pngUrl !== "string" ||
+    typeof svgUrl !== "string" ||
+    typeof backgroundUrl !== "string"
+  ) {
+    return null;
+  }
 
-  return { version, pngUrl, svgUrl };
+  return { version, pngUrl, svgUrl, backgroundUrl };
 }

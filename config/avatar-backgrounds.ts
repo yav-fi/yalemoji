@@ -270,6 +270,98 @@ function canvasRamp(
   return gradient;
 }
 
+function angleToUnitVector(angle: number) {
+  const radians = (angle * Math.PI) / 180;
+  const dx = Math.sin(radians);
+  const dy = -Math.cos(radians);
+  const length = Math.abs(dx) + Math.abs(dy);
+  return {
+    x1: 0.5 - (dx * length) / 2,
+    y1: 0.5 - (dy * length) / 2,
+    x2: 0.5 + (dx * length) / 2,
+    y2: 0.5 + (dy * length) / 2
+  };
+}
+
+function linearGradientDef(id: string, ramp: AvatarBackgroundRamp) {
+  const { x1, y1, x2, y2 } = angleToUnitVector(ramp.angle);
+  const stops = ramp.stops
+    .map(({ color, at }) => `<stop offset="${at}%" stop-color="${color}"/>`)
+    .join("");
+  return `<linearGradient id="${id}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}">${stops}</linearGradient>`;
+}
+
+/**
+ * Renders the background paint as a standalone SVG using objectBoundingBox
+ * gradients/patterns (percentage-based), so the whole thing stays coherent
+ * when stretched to a non-square box (preserveAspectRatio="none") instead of
+ * being a fixed-aspect raster that would blur or crop when resized.
+ */
+export function avatarBackgroundSvg(paint: AvatarBackgroundPaint): string {
+  const open = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">';
+  const close = "</svg>";
+  const fullRect = (fill: string) => `<rect width="100" height="100" fill="${fill}"/>`;
+
+  if (paint.kind === "solid") {
+    return `${open}${fullRect(paint.color)}${close}`;
+  }
+
+  if (paint.kind === "linear") {
+    return `${open}<defs>${linearGradientDef("g", paint)}</defs>${fullRect("url(#g)")}${close}`;
+  }
+
+  if (paint.kind === "blobs") {
+    const defs = [linearGradientDef("base", paint.base)];
+    const rects = [fullRect("url(#base)")];
+
+    [...paint.blobs].reverse().forEach((blob, index) => {
+      const id = `blob-${index}`;
+      defs.push(
+        `<radialGradient id="${id}" cx="${blob.x}%" cy="${blob.y}%" r="${blob.radius}%">` +
+          `<stop offset="0%" stop-color="${blob.color}"/>` +
+          `<stop offset="100%" stop-color="${blob.color}" stop-opacity="0"/>` +
+          `</radialGradient>`
+      );
+      rects.push(fullRect(`url(#${id})`));
+    });
+
+    return `${open}<defs>${defs.join("")}</defs>${rects.join("")}${close}`;
+  }
+
+  // Patterns use patternUnits="userSpaceOnUse" with absolute coordinates in
+  // the same 0-100 space as the rest of the document. patternUnits/
+  // patternContentUnits="objectBoundingBox" with fractional tile sizes is
+  // inconsistently supported (it silently fails to tile in some SVG
+  // renderers, including our own server-side rasterizer) — plain
+  // userSpaceOnUse is the combination every renderer agrees on.
+  const TILE = 25;
+  const CELL = TILE / 2;
+
+  if (paint.kind === "checks") {
+    return (
+      `${open}<defs><pattern id="p" patternUnits="userSpaceOnUse" width="${TILE}" height="${TILE}">` +
+      `<rect width="${CELL}" height="${CELL}" x="0" y="0" fill="${paint.first}"/>` +
+      `<rect width="${CELL}" height="${CELL}" x="${CELL}" y="0" fill="${paint.second}"/>` +
+      `<rect width="${CELL}" height="${CELL}" x="0" y="${CELL}" fill="${paint.second}"/>` +
+      `<rect width="${CELL}" height="${CELL}" x="${CELL}" y="${CELL}" fill="${paint.first}"/>` +
+      `</pattern></defs>${fullRect("url(#p)")}${close}`
+    );
+  }
+
+  return (
+    `${open}<defs>` +
+    `<radialGradient id="dot" cx="50%" cy="50%" r="50%">` +
+    `<stop offset="${paint.radius}%" stop-color="${paint.dot}"/>` +
+    `<stop offset="${paint.radius + 1}%" stop-color="${paint.dot}" stop-opacity="0"/>` +
+    `</radialGradient>` +
+    `<pattern id="p" patternUnits="userSpaceOnUse" width="${TILE}" height="${TILE}">` +
+    `<rect width="${TILE}" height="${TILE}" fill="${paint.background}"/>` +
+    `<circle cx="${CELL}" cy="${CELL}" r="${CELL}" fill="url(#dot)"/>` +
+    `</pattern>` +
+    `</defs>${fullRect("url(#p)")}${close}`
+  );
+}
+
 export function drawAvatarBackground(
   context: CanvasRenderingContext2D,
   paint: AvatarBackgroundPaint,

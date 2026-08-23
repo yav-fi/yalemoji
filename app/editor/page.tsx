@@ -14,7 +14,11 @@ export default async function EditorPage() {
 
   return (
     <>
-      <SiteHeader avatarUrl={avatar?.pngUrl ?? null} netid={user.netid} />
+      <SiteHeader
+        avatarBackgroundUrl={avatar?.backgroundUrl ?? null}
+        avatarUrl={avatar?.pngUrl ?? null}
+        netid={user.netid}
+      />
       <main>
         <AvatarEditor />
       </main>
