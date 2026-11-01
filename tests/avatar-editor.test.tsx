@@ -3,6 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AvatarEditor } from "@/components/avatar-editor";
 import { normalizeAvatarSvg } from "@/lib/avatar-svg";
 
+function selectEyesAndMouth() {
+  fireEvent.click(screen.getByRole("tab", { name: "Eyes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Select Eyes 1" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Mouth" }));
+  fireEvent.click(screen.getByRole("button", { name: "Select Mouth 1" }));
+}
+
 describe("AvatarEditor", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
@@ -172,6 +179,7 @@ describe("AvatarEditor", () => {
     );
 
     render(<AvatarEditor />);
+    selectEyesAndMouth();
     fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
 
     expect(await screen.findByText("Saved (v3)")).toBeInTheDocument();
@@ -193,8 +201,79 @@ describe("AvatarEditor", () => {
     );
 
     render(<AvatarEditor />);
+    selectEyesAndMouth();
     fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("2 minute(s)");
+  });
+
+  it("blocks saving and downloading until the avatar has eyes and a mouth", () => {
+    const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AvatarEditor />);
+    fetchMock.mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Add eyes and a mouth before saving."
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Eyes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select Eyes 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Download PNG with background" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Add a mouth before downloading.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Download transparent PNG" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Add a mouth before downloading.");
+
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/avatar", expect.anything());
+  });
+
+  it("shows the server's message when it rejects an incomplete avatar", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) =>
+        String(input) === "/api/avatar"
+          ? Promise.resolve(
+              new Response(JSON.stringify({ error: "incomplete_avatar", missing: ["mouth"] }), {
+                status: 400
+              })
+            )
+          : new Promise<Response>(() => {})
+      )
+    );
+
+    render(<AvatarEditor />);
+    selectEyesAndMouth();
+    fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Add a mouth before saving."
+    );
+  });
+
+  it("restores unsaved edits for the same netid after a reload", () => {
+    localStorage.clear();
+    const first = render(<AvatarEditor netid="abc123" />);
+    fireEvent.click(screen.getByRole("tab", { name: "Eyebrows" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 1" }));
+    first.unmount();
+
+    const { container } = render(<AvatarEditor netid="abc123" />);
+    expect(container.querySelector('[data-category="brows"]')).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Restored your unsaved edits");
+    localStorage.clear();
+  });
+
+  it("does not show another netid's draft", () => {
+    localStorage.clear();
+    const first = render(<AvatarEditor netid="abc123" />);
+    fireEvent.click(screen.getByRole("tab", { name: "Eyebrows" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 1" }));
+    first.unmount();
+
+    const { container } = render(<AvatarEditor netid="xyz789" />);
+    expect(container.querySelector('[data-category="brows"]')).not.toBeInTheDocument();
+    localStorage.clear();
   });
 });

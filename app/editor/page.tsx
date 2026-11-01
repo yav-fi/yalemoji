@@ -20,7 +20,7 @@ export default async function EditorPage() {
         netid={user.netid}
       />
       <main>
-        <AvatarEditor />
+        <AvatarEditor netid={user.netid} />
       </main>
     </>
   );

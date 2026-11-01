@@ -69,6 +69,52 @@ function validAccessories(value: unknown): AccessorySelections | null {
   return result;
 }
 
+// Every saved or downloaded YaleMoji must include these. Drafts may be incomplete.
+export const requiredFeatures = ["eyes", "mouth"] as const satisfies readonly AvatarCategory[];
+export type RequiredFeature = (typeof requiredFeatures)[number];
+
+export function missingRequiredFeatures(config: Pick<AvatarConfig, "selections">): RequiredFeature[] {
+  return requiredFeatures.filter((category) => !config.selections[category]);
+}
+
+// Lenient counterpart to validateAvatarConfig for restoring local drafts: each
+// invalid field falls back to its value in `defaults` instead of rejecting the
+// whole config, so a removed option doesn't wipe out the rest of a draft.
+export function sanitizeAvatarConfig(input: unknown, defaults: AvatarConfig): AvatarConfig | null {
+  if (!isPlainObject(input)) return null;
+
+  const rawSelections = isPlainObject(input.selections) ? input.selections : {};
+  const selections = {} as AvatarSelections;
+  for (const category of avatarCategories) {
+    const raw = rawSelections[category];
+    if (raw === null && category !== "face") selections[category] = null;
+    else if (typeof raw === "string" && optionIdsByCategory[category].has(raw)) selections[category] = raw;
+    else selections[category] = defaults.selections[category];
+  }
+
+  const rawAccessories = isPlainObject(input.accessories) ? input.accessories : {};
+  const accessories: AccessorySelections = {};
+  for (const type of accessoryTypes) {
+    const raw = rawAccessories[type];
+    if (typeof raw === "string" && findAccessoryOption(type, raw)) accessories[type] = raw;
+  }
+
+  const pick = (raw: unknown, ids: Set<string>, fallback: string) =>
+    typeof raw === "string" && ids.has(raw) ? raw : fallback;
+
+  return {
+    selections,
+    accessories,
+    facialHairId:
+      typeof input.facialHairId === "string" && facialHairIds.has(input.facialHairId)
+        ? input.facialHairId
+        : null,
+    skinPaletteId: pick(input.skinPaletteId, skinPaletteIds, defaults.skinPaletteId),
+    hairPaletteId: pick(input.hairPaletteId, hairPaletteIds, defaults.hairPaletteId),
+    backgroundId: pick(input.backgroundId, backgroundIds, defaults.backgroundId)
+  };
+}
+
 export function validateAvatarConfig(input: unknown): AvatarConfig | null {
   if (!isPlainObject(input)) return null;
 

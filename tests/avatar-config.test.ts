@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createInitialSelections } from "@/config/avatar-options";
-import { validateAvatarConfig } from "@/lib/avatar-config";
+import {
+  missingRequiredFeatures,
+  sanitizeAvatarConfig,
+  validateAvatarConfig
+} from "@/lib/avatar-config";
 
 function baseConfig() {
   return {
@@ -66,5 +70,54 @@ describe("validateAvatarConfig", () => {
     const config = baseConfig() as { selections: Record<string, unknown> };
     delete config.selections.face;
     expect(validateAvatarConfig(config)).toBeNull();
+  });
+});
+
+describe("missingRequiredFeatures", () => {
+  it("requires eyes and a mouth", () => {
+    const config = baseConfig();
+    expect(missingRequiredFeatures(config)).toEqual(["eyes", "mouth"]);
+    config.selections.eyes = "eyes-1";
+    expect(missingRequiredFeatures(config)).toEqual(["mouth"]);
+    config.selections.mouth = "mouth-1";
+    expect(missingRequiredFeatures(config)).toEqual([]);
+  });
+});
+
+describe("sanitizeAvatarConfig", () => {
+  const defaults = () => validateAvatarConfig(baseConfig())!;
+
+  it("keeps a valid config unchanged", () => {
+    const config = { ...defaults(), accessories: { eyewear: "eyewear-1" } };
+    config.selections.eyes = "eyes-2";
+    expect(sanitizeAvatarConfig(config, defaults())).toEqual(config);
+  });
+
+  it("falls back per field instead of rejecting the whole config", () => {
+    const config = {
+      ...baseConfig(),
+      selections: { ...createInitialSelections(), eyes: "eyes-2", hair: "hair-removed" },
+      accessories: { eyewear: "eyewear-1", cheeks: "eyewear-1", unknown: "x" },
+      skinPaletteId: "not-a-palette"
+    };
+    const result = sanitizeAvatarConfig(config, defaults())!;
+    expect(result.selections.eyes).toBe("eyes-2");
+    expect(result.selections.hair).toBeNull();
+    expect(result.accessories).toEqual({ eyewear: "eyewear-1" });
+    expect(result.skinPaletteId).toBe(defaults().skinPaletteId);
+  });
+
+  it("never leaves the face empty", () => {
+    const config = baseConfig() as { selections: Record<string, unknown> };
+    config.selections.face = null;
+    expect(sanitizeAvatarConfig(config, defaults())!.selections.face).toBe(
+      defaults().selections.face
+    );
+  });
+
+  it("returns null for non-object input", () => {
+    expect(sanitizeAvatarConfig(null, defaults())).toBeNull();
+    expect(sanitizeAvatarConfig("x", defaults())).toBeNull();
+    expect(sanitizeAvatarConfig([], defaults())).toBeNull();
   });
 });
