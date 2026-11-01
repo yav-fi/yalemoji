@@ -1,15 +1,6 @@
 .page {
-  min-height: 100svh;
+  min-height: calc(100svh - var(--nav-height));
   background: var(--background);
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  width: min(100%, var(--page-max));
-  height: var(--landing-header-height);
-  margin: 0 auto;
-  padding-inline: var(--space-page);
 }
 
 .hero {
@@ -18,7 +9,7 @@
   align-items: center;
   gap: var(--space-8);
   width: min(100%, var(--page-max));
-  min-height: calc(100svh - var(--landing-header-height));
+  min-height: calc(100svh - var(--nav-height));
   margin: 0 auto;
   padding: 0 var(--hero-edge) var(--landing-header-height);
 }
