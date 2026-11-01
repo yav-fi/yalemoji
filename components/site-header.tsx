@@ -7,11 +7,13 @@ import styles from "./site-header.module.css";
 export function SiteHeader({
   avatarBackgroundUrl,
   avatarUrl,
-  netid
+  netid = null,
+  activePage = "editor"
 }: {
-  avatarBackgroundUrl: string | null;
-  avatarUrl: string | null;
-  netid: string;
+  avatarBackgroundUrl?: string | null;
+  avatarUrl?: string | null;
+  netid?: string | null;
+  activePage?: "home" | "editor" | "about" | "updates";
 }) {
   return (
     <header className={styles.header}>
@@ -19,15 +21,16 @@ export function SiteHeader({
         <Wordmark />
         <nav aria-label="Primary navigation" className={styles.nav}>
           <div className={styles.textLinks}>
-            <Link aria-current="page" className={styles.active} href="/editor">
+            <Link aria-current={activePage === "editor" ? "page" : undefined} className={activePage === "editor" ? styles.active : undefined} href="/editor">
               Editor
             </Link>
           </div>
           <div className={styles.accountControls}>
             <AppsDropdown />
             <ProfileMenu
-              avatarBackgroundUrl={avatarBackgroundUrl}
-              avatarUrl={avatarUrl}
+              activePage={activePage}
+              avatarBackgroundUrl={avatarBackgroundUrl ?? null}
+              avatarUrl={avatarUrl ?? null}
               netid={netid}
             />
           </div>

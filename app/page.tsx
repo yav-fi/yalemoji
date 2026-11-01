@@ -2,19 +2,17 @@ import Image from "next/image";
 import { Suspense } from "react";
 import { RotatingAppName } from "@/components/rotating-app-name";
 import { TrafficLogger } from "@/components/traffic-logger";
-import { Wordmark } from "@/components/wordmark";
+import { PublicSiteHeader } from "@/components/public-site-header";
 import styles from "./page.module.css";
 
 export default function Home() {
   return (
-    <main className={styles.page}>
+    <>
+      <PublicSiteHeader activePage="home" />
+      <main className={styles.page}>
       <Suspense fallback={null}>
         <TrafficLogger />
       </Suspense>
-
-      <header className={styles.header}>
-        <Wordmark />
-      </header>
 
       <section className={styles.hero} aria-labelledby="hero-title">
         <div className={styles.copy}>
@@ -29,10 +27,11 @@ export default function Home() {
           className={styles.avatar}
           height={165}
           priority
-          src="/assets/landing-avatar.png"
+          src="/assets/landing%20avatar.png"
           width={186}
         />
       </section>
     </main>
+    </>
   );
 }
