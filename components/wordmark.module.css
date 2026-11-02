@@ -1,15 +1,14 @@
 .wordmark {
-  color: var(--foreground);
-  font-family: var(--font-brand);
-  font-size: var(--type-logo);
-  font-weight: var(--weight-bold);
-  letter-spacing: var(--tracking-brand);
-  line-height: var(--leading-ui);
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
   text-decoration: none;
 }
 
-.wordmark span {
-  color: var(--accent);
+.logo {
+  display: block;
+  width: auto;
+  height: calc(var(--type-logo) * var(--leading-ui));
 }
 
 .wordmark:focus-visible {

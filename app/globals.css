@@ -26,6 +26,7 @@
   --swatch-default: var(--surface-strong);
 
   --font-body: "Trebuchet MS", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "National Park", var(--font-body);
   --font-brand: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --type-caption: 0.94rem;
   --type-app-label: 0.75rem;
@@ -153,6 +154,15 @@ body {
 button,
 input {
   font: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
 }
 
 button {

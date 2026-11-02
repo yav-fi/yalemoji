@@ -5,6 +5,7 @@
   width: 100%;
   border-bottom: var(--border-width) solid var(--border);
   background: var(--background);
+  font-family: var(--font-heading);
   box-shadow: 0 2px 12px oklch(0.18 0 0 / 0.025);
 }
 
