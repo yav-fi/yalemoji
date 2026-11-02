@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+  avatarBackgroundOptions,
   backgroundSections,
   defaultAvatarBackground,
   drawAvatarBackground,
@@ -24,6 +25,12 @@ import {
   skinPalettes,
   type AvatarPalette
 } from "@/config/avatar-palettes";
+import {
+  missingRequiredFeatures,
+  type AvatarConfig,
+  type RequiredFeature
+} from "@/lib/avatar-config";
+import { useAvatarDraft, type DraftRestoreSource } from "@/lib/avatar-draft";
 import {
   findOpaquePixelBounds,
   fitBoundsInsideSquare
@@ -48,6 +55,28 @@ function initialSelections(): AvatarSelections {
   selections.brows = null;
   selections.mouth = null;
   return selections;
+}
+
+const DEFAULT_SKIN_PALETTE = skinPalettes[2];
+const DEFAULT_HAIR_PALETTE = hairPalettes[0];
+
+const defaultConfig: AvatarConfig = {
+  selections: initialSelections(),
+  accessories: {},
+  facialHairId: null,
+  skinPaletteId: DEFAULT_SKIN_PALETTE.id,
+  hairPaletteId: DEFAULT_HAIR_PALETTE.id,
+  backgroundId: defaultAvatarBackground.id
+};
+
+const requiredFeatureNames: Record<RequiredFeature, string> = {
+  eyes: "eyes",
+  mouth: "a mouth"
+};
+
+function missingFeaturesMessage(missing: readonly RequiredFeature[], action: PngAction) {
+  const names = missing.map((feature) => requiredFeatureNames[feature] ?? feature).join(" and ");
+  return `Add ${names} before ${action === "save" ? "saving" : "downloading"}.`;
 }
 
 function SectionHeading({
@@ -223,6 +252,15 @@ function isSaveBody(body: unknown): body is { version: number } {
   );
 }
 
+function isIncompleteBody(body: unknown): body is { missing: RequiredFeature[] } {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    (body as { error?: unknown }).error === "incomplete_avatar" &&
+    Array.isArray((body as { missing?: unknown }).missing)
+  );
+}
+
 function isRateLimitBody(body: unknown): body is { retryAfterSeconds: number } {
   return (
     typeof body === "object" &&
@@ -231,10 +269,10 @@ function isRateLimitBody(body: unknown): body is { retryAfterSeconds: number } {
   );
 }
 
-export function AvatarEditor() {
+export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
   const [category, setCategory] = useState<AvatarCategory>("face");
-  const [skinPalette, setSkinPalette] = useState<AvatarPalette>(skinPalettes[2]);
-  const [hairPalette, setHairPalette] = useState<AvatarPalette>(hairPalettes[0]);
+  const [skinPalette, setSkinPalette] = useState<AvatarPalette>(DEFAULT_SKIN_PALETTE);
+  const [hairPalette, setHairPalette] = useState<AvatarPalette>(DEFAULT_HAIR_PALETTE);
   const [backgroundOption, setBackgroundOption] =
     useState<AvatarBackgroundOption>(defaultAvatarBackground);
   const [selections, setSelections] =
@@ -244,6 +282,38 @@ export function AvatarEditor() {
   const [pendingAction, setPendingAction] = useState<PngAction | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const config = useMemo<AvatarConfig>(
+    () => ({
+      selections,
+      accessories,
+      facialHairId,
+      skinPaletteId: skinPalette.id,
+      hairPaletteId: hairPalette.id,
+      backgroundId: backgroundOption.id
+    }),
+    [selections, accessories, facialHairId, skinPalette, hairPalette, backgroundOption]
+  );
+
+  function applyConfig(next: AvatarConfig, source: DraftRestoreSource) {
+    setSelections(next.selections);
+    setAccessories(next.accessories);
+    setFacialHairId(next.facialHairId);
+    setSkinPalette(
+      skinPalettes.find((palette) => palette.id === next.skinPaletteId) ?? DEFAULT_SKIN_PALETTE
+    );
+    setHairPalette(
+      hairPalettes.find((palette) => palette.id === next.hairPaletteId) ?? DEFAULT_HAIR_PALETTE
+    );
+    setBackgroundOption(
+      avatarBackgroundOptions.find((option) => option.id === next.backgroundId) ??
+        defaultAvatarBackground
+    );
+    setExportError(null);
+    setSaveMessage(source === "load" ? "Restored your unsaved edits" : null);
+  }
+
+  useAvatarDraft({ config, defaults: defaultConfig, netid, onRestore: applyConfig });
 
   const selectedPalette = category === "hair" ? hairPalette : skinPalette;
   const options = avatarOptions[category];
@@ -275,19 +345,15 @@ export function AvatarEditor() {
     const response = await fetch("/api/avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        selections,
-        accessories,
-        facialHairId,
-        skinPaletteId: skinPalette.id,
-        hairPaletteId: hairPalette.id,
-        backgroundId: backgroundOption.id
-      })
+      body: JSON.stringify(config)
     });
 
     const body: unknown = await response.json().catch(() => null);
 
     if (!response.ok) {
+      if (response.status === 400 && isIncompleteBody(body)) {
+        throw new Error(missingFeaturesMessage(body.missing, "save"));
+      }
       if (response.status === 429 && isRateLimitBody(body)) {
         throw new Error(
           `You're saving too often. Try again in about ${Math.ceil(
@@ -306,6 +372,12 @@ export function AvatarEditor() {
     setPendingAction(action);
     setExportError(null);
     setSaveMessage(null);
+    const missing = missingRequiredFeatures(config);
+    if (missing.length > 0) {
+      setExportError(missingFeaturesMessage(missing, action));
+      setPendingAction(null);
+      return;
+    }
     try {
       if (action === "save") {
         await saveAvatar();

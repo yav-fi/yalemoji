@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { validateAvatarConfig } from "@/lib/avatar-config";
+import { missingRequiredFeatures, validateAvatarConfig } from "@/lib/avatar-config";
 import { renderAvatarAssets } from "@/lib/avatar-render";
 import { uploadAvatarAssets } from "@/lib/avatar-storage";
 import {
@@ -36,6 +36,11 @@ export async function POST(request: NextRequest) {
   const config = validateAvatarConfig(body);
   if (!config) {
     return NextResponse.json({ error: "invalid_config" }, { status: 400 });
+  }
+
+  const missing = missingRequiredFeatures(config);
+  if (missing.length > 0) {
+    return NextResponse.json({ error: "incomplete_avatar", missing }, { status: 400 });
   }
 
   try {
