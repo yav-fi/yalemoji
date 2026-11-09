@@ -8,11 +8,13 @@ import styles from "./site-header.module.css";
 export function SiteHeader({
   avatarBackgroundUrl,
   avatarUrl,
+  firstName,
   netid = null,
   activePage = "editor"
 }: {
   avatarBackgroundUrl?: string | null;
   avatarUrl?: string | null;
+  firstName?: string;
   netid?: string | null;
   activePage?: "home" | "editor" | "about" | "updates";
 }) {
@@ -35,6 +37,7 @@ export function SiteHeader({
                   activePage={activePage}
                   avatarBackgroundUrl={avatarBackgroundUrl ?? null}
                   avatarUrl={avatarUrl ?? null}
+                  firstName={firstName}
                   netid={netid}
                 />
               </div>

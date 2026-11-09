@@ -39,6 +39,17 @@
   height: 100%;
 }
 
+.initials {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  color: #4b5563;
+  font-size: 0.875rem;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+
 .dropdown {
   position: absolute;
   top: var(--profile-dropdown-offset);
@@ -76,6 +87,18 @@
 :global(:root[data-theme="dark"]) .identityHeader {
   background: #216ab8;
   color: #fff;
+}
+
+.identityHeader.initialsHeader,
+:global(:root[data-theme="dark"]) .identityHeader.initialsHeader {
+  background: #d8dce1;
+  color: #4b5563;
+}
+
+.identityHeader .initials {
+  width: var(--profile-menu-avatar-width);
+  height: var(--profile-menu-avatar-width);
+  font-size: 2rem;
 }
 
 .identityHeader .faceLayer {

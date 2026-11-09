@@ -31,6 +31,7 @@ export default async function EditorPage({ searchParams }: {
       <SiteHeader
         avatarBackgroundUrl={avatar?.backgroundUrl ?? null}
         avatarUrl={avatar?.pngUrl ?? null}
+        firstName={user.firstName}
         netid={user.netid}
       />
       <main>

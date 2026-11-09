@@ -152,6 +152,24 @@ This repo is configured to work with the Google Cloud project `yalemoji`:
 
 ## Scripts
 
+Read-only user and avatar statistics (Application Default Credentials required):
+
+```bash
+gcloud auth application-default login # once, if not already authenticated
+GOOGLE_CLOUD_PROJECT=yalemoji npm run user-stats
+# Optional: export all user documents and saved avatar history to a new JSON file.
+GOOGLE_CLOUD_PROJECT=yalemoji npm run user-stats -- --export /tmp/yalemoji-users.json
+```
+
+`users` counts documents in `users`, including users who have not saved an avatar.
+`usersWithYalemoji` uses the same current-avatar check as the app (a version and
+PNG, SVG, and background URL fields). `totalSavedVersions` counts documents in
+the `avatars` collection group, including current and older saved versions.
+Reserved version numbers from failed saves do not count. The export contains
+NetIDs and avatar configurations; it is created with owner-only permissions and
+will not overwrite an existing file. Queries run separately, so concurrent logins
+or saves can cause small differences between counts while the app is active.
+
 ```bash
 npm run dev
 npm run test

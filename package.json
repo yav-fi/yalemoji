@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "api-keys": "node scripts/api-keys.mjs"
+    "api-keys": "node scripts/api-keys.mjs",
+    "user-stats": "node scripts/user-stats.mjs"
   },
   "dependencies": {
     "@google-cloud/firestore": "^8.6.0",

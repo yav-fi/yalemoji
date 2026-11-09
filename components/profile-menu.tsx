@@ -7,22 +7,25 @@ import { useDropdown } from "./use-dropdown";
 import { ProfileMenuIcon } from "./profile-menu-icon";
 import styles from "./profile-menu.module.css";
 
-const defaultAvatarSrc = "/assets/landing%20avatar.png?v=20260719-1";
-
 export function ProfileMenu({
   avatarBackgroundUrl,
   avatarUrl,
+  firstName,
   netid,
   activePage
 }: {
   avatarBackgroundUrl: string | null;
   avatarUrl: string | null;
+  firstName?: string;
   netid: string | null;
   activePage?: "home" | "editor" | "about" | "updates";
 }) {
   const { closeDropdown, closing, open, toggleDropdown, wrapperRef } = useDropdown();
   const dropdownId = useId();
-  const avatarSrc = avatarUrl ?? defaultAvatarSrc;
+  const initials = firstName?.trim()
+    ? firstName.trim().split(/\s+/u).slice(0, 2)
+      .map((name) => Array.from(name)[0]).join("").toUpperCase()
+    : (netid?.replace(/\d/g, "").slice(0, 2).toUpperCase() || "?");
 
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
@@ -34,7 +37,7 @@ export function ProfileMenu({
         onClick={toggleDropdown}
         type="button"
       >
-        {avatarBackgroundUrl ? (
+        {avatarUrl && avatarBackgroundUrl ? (
           <Image
             alt=""
             className={styles.backgroundLayer}
@@ -43,20 +46,24 @@ export function ProfileMenu({
             unoptimized
           />
         ) : null}
-        <Image
-          alt=""
-          className={styles.faceLayer}
-          height={64}
-          src={avatarSrc}
-          unoptimized
-          width={64}
-        />
+        {avatarUrl ? (
+          <Image
+            alt=""
+            className={styles.faceLayer}
+            height={64}
+            src={avatarUrl}
+            unoptimized
+            width={64}
+          />
+        ) : (
+          <span aria-hidden="true" className={styles.initials}>{initials}</span>
+        )}
       </button>
 
       {open ? (
         <div id={dropdownId} inert={closing} className={`${styles.dropdown} ${closing ? styles.closing : ""}`}>
-          <div className={styles.identityHeader}>
-            {avatarBackgroundUrl ? (
+          <div className={`${styles.identityHeader} ${avatarUrl ? "" : styles.initialsHeader}`}>
+            {avatarUrl && avatarBackgroundUrl ? (
               <Image
                 alt=""
                 className={styles.backgroundLayer}
@@ -65,14 +72,18 @@ export function ProfileMenu({
                 unoptimized
               />
             ) : null}
-            <Image
-              alt=""
-              className={styles.faceLayer}
-              height={80}
-              src={avatarSrc}
-              unoptimized
-              width={80}
-            />
+            {avatarUrl ? (
+              <Image
+                alt=""
+                className={styles.faceLayer}
+                height={80}
+                src={avatarUrl}
+                unoptimized
+                width={80}
+              />
+            ) : (
+              <span aria-hidden="true" className={styles.initials}>{initials}</span>
+            )}
           </div>
           <div className={styles.menuItems}>
             <Link aria-current={activePage === "about" ? "page" : undefined} className={styles.dropdownItem} href="/about" onClick={closeDropdown}>
