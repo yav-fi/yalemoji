@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ContextLink } from "./context-link";
 import { AppsDropdown } from "./apps-dropdown";
 import { ProfileMenu } from "./profile-menu";
 import { Wordmark } from "./wordmark";
@@ -27,9 +27,9 @@ export function SiteHeader({
           {netid ? (
             <>
               <div className={styles.textLinks}>
-                <Link aria-current={activePage === "editor" ? "page" : undefined} className={activePage === "editor" ? styles.active : undefined} href="/editor">
+                <ContextLink aria-current={activePage === "editor" ? "page" : undefined} className={activePage === "editor" ? styles.active : undefined} href="/editor">
                   Editor
-                </Link>
+                </ContextLink>
               </div>
               <div className={styles.accountControls}>
                 <AppsDropdown />
@@ -43,7 +43,7 @@ export function SiteHeader({
               </div>
             </>
           ) : (
-            <a className={styles.createButton} href="/api/auth/login">Create now</a>
+            <ContextLink className={styles.createButton} href="/api/auth/login">Create now</ContextLink>
           )}
         </nav>
       </div>

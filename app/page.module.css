@@ -5,7 +5,7 @@
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, var(--hero-copy-width)) auto;
+  grid-template-columns: minmax(0, var(--hero-copy-width));
   align-items: center;
   gap: var(--space-8);
   width: min(100%, var(--page-max));
@@ -35,14 +35,6 @@
   font-weight: var(--weight-regular);
 }
 
-.avatar {
-  align-self: center;
-  width: var(--landing-avatar-width);
-  height: auto;
-  margin-top: var(--space-10);
-  object-fit: contain;
-}
-
 @media (max-width: 48rem) {
   .hero {
     grid-template-columns: 1fr;
@@ -50,15 +42,5 @@
     justify-items: start;
     gap: var(--space-8);
     padding-inline: var(--space-page);
-  }
-
-  .avatar {
-    grid-row: 1;
-    width: var(--landing-avatar-mobile-width);
-    margin: 0;
-  }
-
-  .copy {
-    grid-row: 2;
   }
 }

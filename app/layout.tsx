@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { DeferredHeadingFont } from "@/components/deferred-heading-font";
 import { themeScript } from "@/lib/theme";
+import { Suspense } from "react";
+import { ThemeUrlSync } from "@/components/theme-url-sync";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,6 +21,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
+        <Suspense fallback={null}><ThemeUrlSync /></Suspense>
         <DeferredHeadingFont />
         {children}
       </body>

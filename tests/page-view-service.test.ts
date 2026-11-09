@@ -30,6 +30,20 @@ describe("page view service", () => {
     expect(normalizeRef("x".repeat(130))).toHaveLength(120);
   });
 
+  it.each([
+    ["CourseTable", "coursetable"],
+    ["COURSE-TABLE", "coursetable"],
+    ["Yale Menus", "yalemeals"],
+    ["y/labs", "ylabs"],
+    ["Yale IMs", "yaleims"]
+  ])("uses the same canonical ref for %s on every page", async (ref, expected) => {
+    const { records, store } = createMemoryStore();
+    for (const path of ["/", "/create", "/editor"]) {
+      await logPageView(store, { ref, path, ipHash: "ip", userAgent: "test" });
+    }
+    expect(records.map((record) => record.ref)).toEqual([expected, expected, expected]);
+  });
+
   it("normalizes paths", () => {
     expect(normalizePath("/?ref=flyer")).toBe("/?ref=flyer");
     expect(normalizePath("https://example.com")).toBe("/");

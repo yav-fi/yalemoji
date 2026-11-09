@@ -6,12 +6,13 @@ import {
   getCurrentUser,
   secureCookieOptions
 } from "@/lib/auth";
+import { getPageContext, LOGIN_CONTEXT_COOKIE, withPageContext } from "@/lib/page-context";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   if (await getCurrentUser()) {
-    return NextResponse.redirect(new URL("/editor", request.url));
+    return NextResponse.redirect(new URL(withPageContext("/editor", request.nextUrl.searchParams), request.url));
   }
 
   const state = createAuthState();
@@ -31,5 +32,6 @@ export async function GET(request: NextRequest) {
     state,
     secureCookieOptions(AUTH_STATE_TTL_SECONDS)
   );
+  response.cookies.set(LOGIN_CONTEXT_COOKIE, getPageContext(request.nextUrl.searchParams), secureCookieOptions(AUTH_STATE_TTL_SECONDS));
   return response;
 }

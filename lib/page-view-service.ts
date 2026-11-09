@@ -1,3 +1,5 @@
+import { normalizeAppRef } from "@/config/yale-apps";
+
 export type PageViewInput = {
   ref: unknown;
   ipHash: string;
@@ -41,16 +43,7 @@ export async function logPageView(
 }
 
 export function normalizeRef(ref: unknown) {
-  if (typeof ref !== "string") {
-    return "none";
-  }
-
-  const trimmed = ref.trim();
-  if (!trimmed) {
-    return "none";
-  }
-
-  return trimmed.slice(0, 120);
+  return normalizeAppRef(ref);
 }
 
 export function normalizePath(path: unknown) {

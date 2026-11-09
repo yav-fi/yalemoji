@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AvatarCanvas } from "./avatar-canvas";
+import { ContextLink } from "./context-link";
 import { loadAvatarSvg } from "./avatar-layer";
 import { yaleApps } from "@/config/yale-apps";
 import { hairPalettes, skinPalettes } from "@/config/avatar-palettes";
@@ -112,9 +113,9 @@ export function CreateExperience() {
           </h1>
         </div>
       </div>
-      <a className={styles.createButton} href="/editor">
+      <ContextLink className={styles.createButton} href="/editor">
         <span className={styles.createButtonLabel}>Create now</span>
-      </a>
+      </ContextLink>
     </main>
   );
 }

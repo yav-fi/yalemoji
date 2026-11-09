@@ -1,20 +1,24 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { normalizeAppRef } from "@/config/yale-apps";
 
 export function TrafficLogger() {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const query = searchParams.toString();
   const loggedRef = useRef<string | null>(null);
-  const ref = searchParams.get("ref")?.trim() || "none";
+  const ref = normalizeAppRef(searchParams.get("ref"));
 
   useEffect(() => {
-    if (loggedRef.current === ref) {
+    const path = `${pathname}${query ? `?${query}` : ""}`;
+    const key = `${path}:${ref}`;
+    if (loggedRef.current === key) {
       return;
     }
 
-    loggedRef.current = ref;
-    const path = `${window.location.pathname}${window.location.search}`;
+    loggedRef.current = key;
 
     void fetch("/api/page-view", {
       method: "POST",
@@ -26,7 +30,7 @@ export function TrafficLogger() {
     }).catch(() => {
       // Analytics should never block the landing page.
     });
-  }, [ref]);
+  }, [ref, pathname, query]);
 
   return null;
 }

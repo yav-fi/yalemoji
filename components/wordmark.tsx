@@ -1,10 +1,10 @@
 import Image from "next/image";
-import Link from "next/link";
+import { ContextLink } from "./context-link";
 import styles from "./wordmark.module.css";
 
 export function Wordmark() {
   return (
-    <Link aria-label="YaleMoji home" className={styles.wordmark} href="/">
+    <ContextLink aria-label="YaleMoji home" className={styles.wordmark} href="/">
       <Image
         alt=""
         className={`${styles.logo} ${styles.logoLight}`}
@@ -21,6 +21,6 @@ export function Wordmark() {
         src="/assets/yalemoji-dark.svg"
         width={465}
       />
-    </Link>
+    </ContextLink>
   );
 }

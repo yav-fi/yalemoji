@@ -63,7 +63,7 @@ gcloud run deploy yalemoji \
 - `waitlistSubmissions/{emailHash}` stores the normalized email, email hash, submission timestamp, IP hash, user agent, and source.
 - `rateLimits/{key}:{windowStart}` stores per-window attempt counters (waitlist submissions by IP hash, avatar saves by netid, avatar reads by IP hash or API key) and expiry metadata.
 - `apiKeys/{keyId}` stores API keys for other apps, by SHA-256 hash of the key: `app`, `description`, `createdAt`, `revokedAt`.
-- `trafficPageViews/{autoId}` stores every page load with `ref`, IP hash, user agent, path, and timestamp. Visits without `?ref=` are stored as `none`; for example `/` logs `none`, while `/?ref=poster` logs `poster`.
+- `trafficPageViews/{autoId}` records visits to `/`, `/create`, and `/editor` with `ref`, IP hash, user agent, path, and timestamp. Known app names and aliases map to the canonical IDs in `config/yale-apps.ts` (for example `CourseTable` → `coursetable`, `Yale Menus` → `yalemeals`). Other campaign refs are preserved; missing refs are stored as `none`. Internal links and the login flow carry the normalized ref forward.
 - `users/{netid}` stores login/identity metadata (`firstSeenAt`, `lastLoginAt`, set on every login) and the current avatar pointer: `avatarId` (a non-reversible id derived from the netid, used in storage paths so they don't leak netids), `avatarVersion`, `pngUrl`, `svgUrl`, `backgroundUrl`, and `updatedAt`.
 - `users/{netid}/avatars/{version}` stores the full history: the canonical `config` (selections/accessories/palette/background ids) that produced that version, its asset URLs, and `createdAt`.
 

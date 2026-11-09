@@ -21,6 +21,7 @@ export function loadAvatarSvg(src: string) {
 export function AvatarLayer({ fit = false, src }: { fit?: boolean; src: string }) {
   const id = useId().replace(/[^a-z0-9]/gi, "");
   const [svg, setSvg] = useState<string | null>(null);
+  const [fittedSvg, setFittedSvg] = useState<{ source: string; markup: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const layerRef = useRef<HTMLSpanElement>(null);
 
@@ -52,10 +53,12 @@ export function AvatarLayer({ fit = false, src }: { fit?: boolean; src: string }
       const box = element.getBBox();
       if (!box.width && !box.height) return;
       const side = Math.max(box.width, box.height) * 1.24;
-      element.setAttribute(
+      const fitted = element.cloneNode(true) as SVGSVGElement;
+      fitted.setAttribute(
         "viewBox",
         `${box.x + box.width / 2 - side / 2} ${box.y + box.height / 2 - side / 2} ${side} ${side}`
       );
+      setFittedSvg({ source: svg, markup: fitted.outerHTML });
     } catch {
       // Browsers can decline to measure an SVG before it reaches layout.
     }
@@ -68,7 +71,7 @@ export function AvatarLayer({ fit = false, src }: { fit?: boolean; src: string }
     <span
       aria-hidden="true"
       className={styles.layer}
-      dangerouslySetInnerHTML={{ __html: svg }}
+      dangerouslySetInnerHTML={{ __html: fit && fittedSvg?.source === svg ? fittedSvg.markup : svg }}
       ref={layerRef}
     />
   );

@@ -1,17 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { yaleApps } from "@/config/yale-apps";
 import styles from "./rotating-app-name.module.css";
 
-const appNames = [
-  "CourseTable",
-  "Yalies",
-  "Yale Clubs",
-  "y/meets",
-  "y/labs",
-  "Yale Menus",
-  "YaleIMs"
-] as const;
+const appNames = yaleApps.map((app) => app.name);
 
 export function RotatingAppName() {
   const [index, setIndex] = useState(0);

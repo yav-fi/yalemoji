@@ -8,11 +8,13 @@ import {
   verifyYaliesAssertion
 } from "@/lib/auth";
 import { recordLogin } from "@/lib/avatar-store";
+import { LOGIN_CONTEXT_COOKIE, withPageContext } from "@/lib/page-context";
 
 export const runtime = "nodejs";
 
 function clearState(response: NextResponse) {
   response.cookies.set(AUTH_STATE_COOKIE, "", secureCookieOptions(0));
+  response.cookies.set(LOGIN_CONTEXT_COOKIE, "", secureCookieOptions(0));
   return response;
 }
 
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
   }
 
   const response = clearState(
-    NextResponse.redirect(new URL("/editor", request.url))
+    NextResponse.redirect(new URL(withPageContext("/editor", request.cookies.get(LOGIN_CONTEXT_COOKIE)?.value ?? ""), request.url))
   );
   response.cookies.set(
     SESSION_COOKIE,

@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { THEME_STORAGE_KEY } from "@/lib/theme";
+import { applyTheme, THEME_CHANGE_EVENT, THEME_STORAGE_KEY } from "@/lib/theme";
 import styles from "./theme-toggle.module.css";
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+    function syncCurrentTheme() {
+      setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+    }
+    syncCurrentTheme();
     function syncTheme(event: StorageEvent) {
       if (event.key !== THEME_STORAGE_KEY && event.key !== null) return;
       const next = event.newValue === "dark" ? "dark" : "light";
@@ -16,18 +19,16 @@ export function ThemeToggle() {
       setTheme(next);
     }
     window.addEventListener("storage", syncTheme);
-    return () => window.removeEventListener("storage", syncTheme);
+    window.addEventListener(THEME_CHANGE_EVENT, syncCurrentTheme);
+    return () => {
+      window.removeEventListener("storage", syncTheme);
+      window.removeEventListener(THEME_CHANGE_EVENT, syncCurrentTheme);
+    };
   }, []);
 
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    setTheme(next);
-    try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, next);
-    } catch {
-      // The toggle still works when browser storage is unavailable.
-    }
+    applyTheme(next);
   }
 
   const label = `Switch to ${theme === "dark" ? "light" : "dark"} mode`;

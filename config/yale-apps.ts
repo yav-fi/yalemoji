@@ -35,3 +35,9 @@ export function findReferringApp(ref: string | null | undefined): YaleApp | null
   if (!normalized) return null;
   return yaleApps.find((app) => app.id === normalized || app.aliases.includes(normalized)) ?? null;
 }
+
+export function normalizeAppRef(ref: unknown): string {
+  if (typeof ref !== "string" || !ref.trim()) return "none";
+  const trimmed = ref.trim();
+  return findReferringApp(trimmed)?.id ?? trimmed.slice(0, 120);
+}
