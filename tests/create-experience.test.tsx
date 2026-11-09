@@ -30,11 +30,11 @@ afterEach(() => {
 });
 
 describe("CreateExperience", () => {
-  it("starts with every app in the orbit and no referral intro or action buttons", async () => {
+  it("starts with every app in the orbit and a create link below the animation", async () => {
     const { container } = render(<CreateExperience />);
     await act(() => vi.advanceTimersByTimeAsync(0));
     expect(container.querySelector('[data-phase="ready"]')).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Create your YaleMoji" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Create now" })).toHaveAttribute("href", "/editor");
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Your Yale apps" }).querySelectorAll("img")).toHaveLength(8);
@@ -56,7 +56,7 @@ describe("CreateExperience", () => {
     expect(screen.queryByRole("heading", { name: "Introducing YaleMoji" })).not.toBeInTheDocument();
     expect(screen.getByTestId("preview")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Your Yale apps" }).querySelectorAll("img")).toHaveLength(8);
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Create now" })).toHaveAttribute("href", "/editor");
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     await act(() => vi.advanceTimersByTimeAsync(999));
     expect(screen.queryByRole("heading", { name: "Introducing YaleMoji" })).not.toBeInTheDocument();

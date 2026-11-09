@@ -112,6 +112,7 @@ export function CreateExperience() {
           </h1>
         </div>
       </div>
+      <a className={styles.createButton} href="/editor">Create now</a>
     </main>
   );
 }

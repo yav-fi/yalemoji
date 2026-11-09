@@ -13,7 +13,7 @@
 }
 
 .scene {
-  --scene-size: min(40rem, calc(100vw - 2.5rem));
+  --scene-size: min(40rem, calc(100vw - 2.5rem), max(18rem, calc(100svh - var(--nav-height) - 11rem)));
   --orbit-radius: calc(var(--scene-size) * 0.32);
   --app-size: clamp(2.5rem, 8vw, 4.5rem);
   position: relative;
@@ -25,6 +25,35 @@
 .backdrop {
   position: absolute;
   inset: 0;
+}
+
+.createButton {
+  display: inline-flex;
+  min-width: min(18rem, 100%);
+  min-height: 4rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5rem;
+  padding: 1rem 2.5rem;
+  border-radius: var(--radius-full);
+  background: #fff;
+  color: var(--accent);
+  font-family: var(--font-heading);
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  font-weight: var(--weight-bold);
+  text-decoration: none;
+  box-shadow: 0 6px 24px rgb(0 53 107 / 15%);
+  transition: background var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.createButton:hover {
+  background: var(--surface);
+  box-shadow: 0 8px 28px rgb(0 53 107 / 24%);
+}
+
+.createButton:focus-visible {
+  outline: var(--focus-width) solid #fff;
+  outline-offset: var(--focus-offset);
 }
 
 .scene[data-phase="blurring"] .backdrop,

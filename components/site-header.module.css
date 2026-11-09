@@ -57,6 +57,29 @@
   font-weight: var(--weight-semibold);
 }
 
+.createButton {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+
+.createButton:hover {
+  background: var(--accent-hover);
+}
+
+.createButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
 .textLinks a:focus-visible {
   outline: var(--focus-width) solid var(--focus);
   outline-offset: var(--focus-offset);
