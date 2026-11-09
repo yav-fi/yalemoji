@@ -1,33 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import { yaleApps, type YaleApp } from "@/config/yale-apps";
 import { useDropdown } from "./use-dropdown";
 import styles from "./apps-dropdown.module.css";
 
-type AppLink = {
-  name: string;
-  href: string;
-  image: string;
-  imageShift?: "up" | "upMore";
-  imageSize?: "xlarge";
-  roundedImage?: boolean;
-};
-
-const apps: AppLink[] = [
-  { name: "CourseTable", href: "https://coursetable.com", image: "/apps-panel/coursetable.svg" },
-  { name: "Yalies", href: "https://yalies.io", image: "/apps-panel/yalies.png" },
-  { name: "Yale Clubs", href: "https://yaleclubs.io", image: "/apps-panel/yclubs.svg" },
-  { name: "y/meets", href: "https://ymeets.com", image: "/apps-panel/ymeetslogo.png", roundedImage: true },
-  { name: "Yale IMs", href: "https://yaleims.com", image: "/apps-panel/yaleims.png", imageShift: "up" },
-  { name: "y/labs", href: "https://yalelabs.io", image: "/apps-panel/ylabs.png", imageShift: "up" },
-  {
-    name: "Yale Meals",
-    href: "https://apps.apple.com/us/app/yalemeals/id6755962674",
-    image: "/apps-panel/yale-menus.png",
-    imageShift: "upMore",
-    imageSize: "xlarge"
-  }
-];
+const appOrder = ["coursetable", "yalies", "yaleclubs", "ymeets", "yaleims", "ylabs", "yalemeals"];
+const apps = yaleApps
+  .filter((app): app is YaleApp & { href: string } => typeof app.href === "string")
+  .sort((a, b) => appOrder.indexOf(a.id) - appOrder.indexOf(b.id));
 
 export function AppsDropdown() {
   const { closeDropdown, closing, open, toggleDropdown, wrapperRef } = useDropdown();

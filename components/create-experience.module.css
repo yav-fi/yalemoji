@@ -1,0 +1,182 @@
+.page {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: calc(100svh - var(--nav-height));
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 2rem 1.25rem 1.5rem;
+  background: linear-gradient(125deg, rgb(33 106 184 / 70%), rgb(40 180 170 / 65%)), #fff;
+  color: #163656;
+}
+
+.scene {
+  --scene-size: min(40rem, calc(100vw - 2.5rem));
+  --orbit-radius: calc(var(--scene-size) * 0.32);
+  --app-size: clamp(2.5rem, 8vw, 4.5rem);
+  position: relative;
+  width: var(--scene-size);
+  height: var(--scene-size);
+  flex-shrink: 0;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.scene[data-phase="blurring"] .backdrop,
+.scene[data-phase="revealed"] .backdrop {
+  animation:
+    blurAway var(--blur-duration) linear forwards,
+    fadeAway var(--blur-duration) linear -400ms forwards;
+}
+
+.orbit {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  animation: orbit 65s linear infinite;
+}
+
+.appPosition {
+  position: absolute;
+  top: calc(50% + var(--orbit-radius) * var(--y));
+  left: calc(50% + var(--orbit-radius) * var(--x));
+  z-index: 2;
+  width: var(--app-size);
+  height: var(--app-size);
+  transform: translate(-50%, -50%);
+}
+
+.counterRotation {
+  width: 100%;
+  height: 100%;
+  animation: counterOrbit 65s linear infinite;
+}
+
+.appImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 3px #16365608);
+  animation: iconPulse var(--pulse-duration) ease-in-out var(--pulse-delay) infinite;
+}
+
+.rounded {
+  border-radius: 24%;
+}
+
+.center {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar {
+  position: relative;
+  width: 35%;
+  aspect-ratio: 1;
+}
+
+.avatarPreview {
+  position: absolute;
+  inset: 0;
+}
+
+.introduction {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 900ms ease, visibility 900ms ease;
+}
+
+.scene[data-phase="revealed"] .introduction,
+.scene[data-phase="finished"] .introduction {
+  opacity: 1;
+  visibility: visible;
+}
+
+.title {
+  margin: 0;
+  color: #fff;
+  font-family: var(--font-heading);
+  line-height: 1.1;
+  text-align: center;
+  text-shadow: 0 2px 22px rgb(0 53 107 / 35%);
+}
+
+.introducing {
+  display: block;
+  margin-bottom: 0.65rem;
+  font-size: clamp(1.25rem, 4vw, 2rem);
+  font-weight: 500;
+}
+
+.logo {
+  display: block;
+  width: clamp(15rem, 40vw, 28rem);
+  max-width: calc(100vw - 3rem);
+  height: auto;
+  margin: 0 auto;
+  filter: brightness(0) invert(1);
+}
+
+@keyframes blurAway {
+  0% { filter: blur(0); }
+  35% { filter: blur(16px); }
+  70% { filter: blur(50px); }
+  100% { filter: blur(90px); }
+}
+
+@keyframes fadeAway {
+  0%, 35% { opacity: 1; }
+  70% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+@keyframes orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes counterOrbit {
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes iconPulse {
+  0% { transform: scale(1); }
+  7.5% { transform: scale(1.3); }
+  25%, 100% { transform: scale(1); }
+}
+
+@media (max-width: 30rem) {
+  .page {
+    padding-inline: 0.75rem;
+  }
+
+  .scene {
+    --scene-size: calc(100vw - 1.5rem);
+    --orbit-radius: calc(var(--scene-size) * 0.345);
+    --app-size: 2.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit,
+  .counterRotation,
+  .appImage {
+    animation: none;
+  }
+}
