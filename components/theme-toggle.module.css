@@ -1,0 +1,23 @@
+.toggle {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--foreground-muted);
+  transition: color var(--motion-fast), background-color var(--motion-fast);
+}
+
+.toggle:hover {
+  background: var(--muted);
+  color: var(--accent);
+}
+
+.toggle:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}

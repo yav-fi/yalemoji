@@ -16,7 +16,8 @@
   border: 2px solid transparent;
   border-radius: 8px;
   background: #f4f6f9;
-  color: var(--foreground);
+  color: var(--artwork-foreground);
+  color-scheme: light;
   transition:
     background-color var(--motion-fast) var(--ease-standard),
     border-color var(--motion-fast) var(--ease-standard);
@@ -76,4 +77,13 @@
 .empty code {
   color: #00356b;
   font-family: var(--font-brand);
+}
+
+:global(:root[data-theme="dark"]) .empty {
+  border-color: var(--border);
+  color: var(--foreground-muted);
+}
+
+:global(:root[data-theme="dark"]) .empty code {
+  color: var(--accent);
 }

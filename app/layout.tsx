@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DeferredHeadingFont } from "@/components/deferred-heading-font";
+import { themeScript } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
         <DeferredHeadingFont />
         {children}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppsDropdown } from "./apps-dropdown";
 import { ProfileMenu } from "./profile-menu";
 import { Wordmark } from "./wordmark";
+import { ThemeToggle } from "./theme-toggle";
 import styles from "./site-header.module.css";
 
 export function SiteHeader({
@@ -22,6 +23,7 @@ export function SiteHeader({
       <div className={styles.inner}>
         <Wordmark />
         <nav aria-label="Primary navigation" className={styles.nav}>
+          <ThemeToggle />
           {netid ? (
             <>
               <div className={styles.textLinks}>

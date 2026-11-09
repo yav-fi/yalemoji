@@ -85,7 +85,7 @@
 }
 
 .createButton:hover {
-  background: var(--surface);
+  background: #f5f9fc;
   box-shadow: 0 8px 28px rgb(0 53 107 / 24%);
 }
 

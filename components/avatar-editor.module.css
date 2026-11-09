@@ -351,6 +351,63 @@
   white-space: nowrap;
 }
 
+/* Theme only the editor's surrounding UI; artwork and swatches stay true to color. */
+:global(:root[data-theme="dark"]) .page {
+  background: var(--editor-shell-background);
+}
+
+:global(:root[data-theme="dark"]) .page::after {
+  background: color-mix(in srgb, var(--editor-shell-background) 85%, transparent);
+}
+
+:global(:root[data-theme="dark"]) .panel {
+  background: var(--surface);
+}
+
+:global(:root[data-theme="dark"]) .tabs,
+:global(:root[data-theme="dark"]) .panelFooter {
+  border-color: var(--border);
+}
+
+:global(:root[data-theme="dark"]) .tab,
+:global(:root[data-theme="dark"]) .sectionHeading h2 {
+  color: var(--foreground-muted);
+}
+
+:global(:root[data-theme="dark"]) .tab[data-active="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+:global(:root[data-theme="dark"]) .tab:hover,
+:global(:root[data-theme="dark"]) .sectionHeading button {
+  color: var(--accent);
+}
+
+:global(:root[data-theme="dark"]) .tab:focus-visible,
+:global(:root[data-theme="dark"]) .export:focus-visible,
+:global(:root[data-theme="dark"]) .sectionHeading button:focus-visible {
+  outline-color: var(--focus);
+}
+
+:global(:root[data-theme="dark"]) .secondaryAction {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--accent);
+}
+
+:global(:root[data-theme="dark"]) .secondaryAction:hover {
+  background: var(--surface);
+}
+
+:global(:root[data-theme="dark"]) .exportError {
+  color: var(--danger);
+}
+
+:global(:root[data-theme="dark"]) .saveMessage {
+  color: #8fdbb0;
+}
+
 @media (max-width: 699px) {
   .page {
     align-items: flex-start;

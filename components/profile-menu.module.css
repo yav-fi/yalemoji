@@ -77,6 +77,11 @@
   min-height: 8.25rem;
 }
 
+:global(:root[data-theme="dark"]) .identityHeader {
+  background: #216ab8;
+  color: #fff;
+}
+
 .identityHeader .faceLayer {
   width: var(--profile-menu-avatar-width);
   height: auto;

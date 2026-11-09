@@ -1,7 +1,4 @@
 .page {
-  --info-ink: #163656;
-  --info-blue: #2863a0;
-  --info-line: #dce5ed;
   width: min(100%, 62rem);
   margin: 0 auto;
   padding: 3rem 2.5rem 4rem;
@@ -54,7 +51,7 @@
   overflow: hidden;
   border: 1px solid var(--info-line);
   border-radius: 1rem;
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 6px 24px #16365606;
 }
 
