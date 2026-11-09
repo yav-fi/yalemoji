@@ -3,6 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AvatarEditor } from "@/components/avatar-editor";
 import { normalizeAvatarSvg } from "@/lib/avatar-svg";
 
+const refresh = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+
+function chooseDownload(name: string) {
+  fireEvent.click(screen.getByRole("button", { name: "Download" }));
+  fireEvent.click(screen.getByRole("button", { name }));
+}
+
 function selectEyesAndMouth() {
   fireEvent.click(screen.getByRole("tab", { name: "Eyes" }));
   fireEvent.click(screen.getByRole("button", { name: "Select Eyes 1" }));
@@ -12,6 +20,7 @@ function selectEyesAndMouth() {
 
 describe("AvatarEditor", () => {
   beforeEach(() => {
+    refresh.mockClear();
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
   });
 
@@ -38,6 +47,8 @@ describe("AvatarEditor", () => {
     expect(screen.getByRole("tab", { name: "Face" })).toHaveAttribute("aria-selected", "true");
     fireEvent.click(screen.getByRole("tab", { name: "Hair" }));
     expect(screen.getByRole("tab", { name: "Hair" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("button", { name: "Download PNG with background" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
     expect(
       screen.getByRole("button", { name: "Download PNG with background" })
     ).toBeInTheDocument();
@@ -46,7 +57,9 @@ describe("AvatarEditor", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Save avatar" })
-    ).toBeInTheDocument();
+    ).toHaveTextContent("Save");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("button", { name: "Download PNG with background" })).not.toBeInTheDocument();
   });
 
   it("starts with the selected face and fixed nose, then toggles features", () => {
@@ -183,6 +196,7 @@ describe("AvatarEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
 
     expect(await screen.findByText("Saved (v3)")).toBeInTheDocument();
+    expect(refresh).toHaveBeenCalledOnce();
   });
 
   it("shows a friendly message when saving is rate limited", async () => {
@@ -205,6 +219,7 @@ describe("AvatarEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("2 minute(s)");
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("blocks saving and downloading until the avatar has eyes and a mouth", () => {
@@ -220,10 +235,10 @@ describe("AvatarEditor", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Eyes" }));
     fireEvent.click(screen.getByRole("button", { name: "Select Eyes 1" }));
-    fireEvent.click(screen.getByRole("button", { name: "Download PNG with background" }));
+    chooseDownload("Download PNG with background");
     expect(screen.getByRole("alert")).toHaveTextContent("Add a mouth before downloading.");
 
-    fireEvent.click(screen.getByRole("button", { name: "Download transparent PNG" }));
+    chooseDownload("Download transparent PNG");
     expect(screen.getByRole("alert")).toHaveTextContent("Add a mouth before downloading.");
 
     expect(fetchMock).not.toHaveBeenCalledWith("/api/avatar", expect.anything());
@@ -261,7 +276,7 @@ describe("AvatarEditor", () => {
 
     const { container } = render(<AvatarEditor netid="abc123" />);
     expect(container.querySelector('[data-category="brows"]')).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Restored your unsaved edits");
+    expect(screen.queryByText("Restored your unsaved edits")).not.toBeInTheDocument();
     localStorage.clear();
   });
 

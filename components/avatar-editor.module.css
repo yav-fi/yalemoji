@@ -258,11 +258,13 @@
 }
 
 .panelFooter {
+  position: relative;
   display: flex;
   min-height: 63px;
   flex: none;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 12px 16px;
   border-top: 1px solid rgba(0, 53, 107, 0.08);
@@ -275,18 +277,66 @@
   gap: 8px;
 }
 
+.footerStatus {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.downloadWrapper {
+  display: flex;
+}
+
+.downloadMenu {
+  position: absolute;
+  z-index: 3;
+  left: 16px;
+  bottom: calc(100% + 8px);
+  width: 15rem;
+  max-width: calc(100% - 32px);
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-overlay-small);
+}
+
+.downloadMenu button {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.downloadMenu button:hover {
+  background: var(--muted);
+}
+
+.downloadMenu button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
 .export {
   display: flex;
-  width: 38px;
+  width: auto;
   height: 38px;
   flex: none;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  gap: 8px;
+  padding: 0 12px;
   border: 0;
   border-radius: 8px;
   background: #00356b;
   color: #fff;
+  font-size: 12px;
+  font-weight: 600;
   transition: background-color var(--motion-fast) var(--ease-standard);
 }
 
@@ -305,11 +355,12 @@
 }
 
 .saveAction {
-  background: #286947;
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .saveAction:hover {
-  background: #20563a;
+  background: var(--accent-hover);
 }
 
 .export:disabled {
@@ -318,6 +369,7 @@
 }
 
 .export svg {
+  flex-shrink: 0;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -333,7 +385,7 @@
 
 .saveMessage {
   margin: 0;
-  color: #286947;
+  color: var(--accent);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.3;
@@ -402,10 +454,6 @@
 
 :global(:root[data-theme="dark"]) .exportError {
   color: var(--danger);
-}
-
-:global(:root[data-theme="dark"]) .saveMessage {
-  color: #8fdbb0;
 }
 
 @media (max-width: 699px) {

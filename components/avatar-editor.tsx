@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   avatarBackgroundOptions,
   backgroundSections,
@@ -30,7 +31,7 @@ import {
   type AvatarConfig,
   type RequiredFeature
 } from "@/lib/avatar-config";
-import { useAvatarDraft, type DraftRestoreSource } from "@/lib/avatar-draft";
+import { useAvatarDraft } from "@/lib/avatar-draft";
 import {
   findOpaquePixelBounds,
   fitBoundsInsideSquare
@@ -42,11 +43,50 @@ import {
 } from "./avatar-canvas";
 import { loadAvatarSvg } from "./avatar-layer";
 import { AvatarOptionGrid } from "./avatar-option-grid";
+import { useDropdown } from "./use-dropdown";
 import styles from "./avatar-editor.module.css";
 
 const EXPORT_SIZE = 1080;
 const EXPORT_AVATAR_SIZE = 900;
 type PngAction = "download-background" | "download-transparent" | "save";
+
+function DownloadButton({ pendingAction, onDownload }: {
+  pendingAction: PngAction | null;
+  onDownload: (action: "download-background" | "download-transparent") => Promise<void>;
+}) {
+  const { closeDropdown, closing, open, toggleDropdown, wrapperRef } = useDropdown();
+  const dropdownId = useId();
+  const expanded = open && !closing;
+
+  return (
+    <div className={styles.downloadWrapper} ref={wrapperRef}>
+      <button
+        aria-controls={expanded ? dropdownId : undefined}
+        aria-expanded={expanded}
+        className={`${styles.export} ${styles.secondaryAction}`}
+        disabled={pendingAction !== null}
+        onClick={toggleDropdown}
+        type="button"
+      >
+        <svg aria-hidden fill="none" height="18" viewBox="0 0 24 24" width="18">
+          <path d="M12 4v13m-6-6 6 6 6-6M5 21h14" />
+        </svg>
+        {pendingAction?.startsWith("download") ? "Downloading…" : "Download"}
+        <svg aria-hidden fill="none" height="12" viewBox="0 0 24 24" width="12"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {expanded ? (
+        <div aria-label="Download options" className={styles.downloadMenu} id={dropdownId}>
+          <button onClick={() => { closeDropdown(); void onDownload("download-background"); }} type="button">
+            Download PNG with background
+          </button>
+          <button onClick={() => { closeDropdown(); void onDownload("download-transparent"); }} type="button">
+            Download transparent PNG
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function initialSelections(): AvatarSelections {
   const selections = createInitialSelections();
@@ -270,6 +310,7 @@ function isRateLimitBody(body: unknown): body is { retryAfterSeconds: number } {
 }
 
 export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
+  const router = useRouter();
   const [category, setCategory] = useState<AvatarCategory>("face");
   const [skinPalette, setSkinPalette] = useState<AvatarPalette>(DEFAULT_SKIN_PALETTE);
   const [hairPalette, setHairPalette] = useState<AvatarPalette>(DEFAULT_HAIR_PALETTE);
@@ -295,7 +336,7 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
     [selections, accessories, facialHairId, skinPalette, hairPalette, backgroundOption]
   );
 
-  function applyConfig(next: AvatarConfig, source: DraftRestoreSource) {
+  function applyConfig(next: AvatarConfig) {
     setSelections(next.selections);
     setAccessories(next.accessories);
     setFacialHairId(next.facialHairId);
@@ -310,7 +351,7 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
         defaultAvatarBackground
     );
     setExportError(null);
-    setSaveMessage(source === "load" ? "Restored your unsaved edits" : null);
+    setSaveMessage(null);
   }
 
   useAvatarDraft({ config, defaults: defaultConfig, netid, onRestore: applyConfig });
@@ -365,6 +406,7 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
     }
 
     setSaveMessage(`Saved (v${isSaveBody(body) ? body.version : "?"})`);
+    router.refresh();
   }
 
   async function runPngAction(action: PngAction) {
@@ -586,78 +628,31 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
           </div>
 
           <div className={styles.panelFooter}>
-            {exportError ? (
-              <p className={styles.exportError} role="alert">
-                {exportError}
-              </p>
-            ) : saveMessage ? (
-              <p className={styles.saveMessage} role="status">
-                {saveMessage}
-              </p>
-            ) : (
-              <span />
-            )}
             <div className={styles.footerActions}>
-              <button
-                aria-label="Download transparent PNG"
-                className={`${styles.export} ${styles.secondaryAction}`}
-                disabled={pendingAction !== null}
-                onClick={() => runPngAction("download-transparent")}
-                title="Download transparent PNG"
-                type="button"
-              >
-                <svg
-                  aria-hidden
-                  fill="none"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  width="18"
-                >
-                  <path d="M12 4v13" />
-                  <path d="m6 11 6 6 6-6" />
-                  <path d="M5 21h14" />
-                </svg>
-              </button>
-              <button
-                aria-label="Download PNG with background"
-                className={styles.export}
-                disabled={pendingAction !== null}
-                onClick={() => runPngAction("download-background")}
-                title="Download PNG with background"
-                type="button"
-              >
-                <svg
-                  aria-hidden
-                  fill="none"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  width="18"
-                >
-                  <path d="M12 4v13" />
-                  <path d="m6 11 6 6 6-6" />
-                </svg>
-              </button>
               <button
                 aria-label="Save avatar"
                 className={`${styles.export} ${styles.saveAction}`}
                 disabled={pendingAction !== null}
                 onClick={() => runPngAction("save")}
-                title="Save avatar"
                 type="button"
               >
-                <svg
-                  aria-hidden
-                  fill="none"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  width="18"
-                >
+                <svg aria-hidden fill="none" height="18" viewBox="0 0 24 24" width="18">
                   <path d="M5 4h12l2 2v14H5z" />
-                  <path d="M8 4v6h8V4" />
-                  <path d="M8 20v-6h8v6" />
+                  <path d="M8 4v6h8V4M8 20v-6h8v6" />
                 </svg>
+                {pendingAction === "save" ? "Saving…" : "Save"}
               </button>
+              <DownloadButton pendingAction={pendingAction} onDownload={runPngAction} />
             </div>
+            {exportError || saveMessage ? (
+              <div className={styles.footerStatus}>
+                {exportError ? (
+                  <p className={styles.exportError} role="alert">{exportError}</p>
+                ) : (
+                  <p className={styles.saveMessage} role="status">{saveMessage}</p>
+                )}
+              </div>
+            ) : null}
           </div>
         </aside>
       </div>
