@@ -61,7 +61,8 @@ gcloud run deploy yalemoji \
 ## Data Model
 
 - `waitlistSubmissions/{emailHash}` stores the normalized email, email hash, submission timestamp, IP hash, user agent, and source.
-- `rateLimits/{key}:{windowStart}` stores per-window attempt counters (waitlist submissions by IP hash, avatar saves by netid, avatar reads by IP hash) and expiry metadata.
+- `rateLimits/{key}:{windowStart}` stores per-window attempt counters (waitlist submissions by IP hash, avatar saves by netid, avatar reads by IP hash or API key) and expiry metadata.
+- `apiKeys/{keyId}` stores API keys for other apps, by SHA-256 hash of the key: `app`, `description`, `createdAt`, `revokedAt`.
 - `trafficPageViews/{autoId}` stores every page load with `ref`, IP hash, user agent, path, and timestamp. Visits without `?ref=` are stored as `none`; for example `/` logs `none`, while `/?ref=poster` logs `poster`.
 - `users/{netid}` stores login/identity metadata (`firstSeenAt`, `lastLoginAt`, set on every login) and the current avatar pointer: `avatarId` (a non-reversible id derived from the netid, used in storage paths so they don't leak netids), `avatarVersion`, `pngUrl`, `svgUrl`, `backgroundUrl`, and `updatedAt`.
 - `users/{netid}/avatars/{version}` stores the full history: the canonical `config` (selections/accessories/palette/background ids) that produced that version, its asset URLs, and `createdAt`.
@@ -79,13 +80,45 @@ All three are uploaded as **immutable, versioned** objects to Cloud Storage (`li
 
 Saves are rate-limited per netid (20/hour) — generous for iterative editing, but bounded.
 
-Other Yale apps can consume a user's avatar without any YaleMoji-specific integration:
+## Using avatars in other Yale apps
 
-- `GET /api/v1/users/{netid}` — `{ netid, avatar: { version, png_url, svg_url, background_url } }`, 404 if the user hasn't saved one yet. Cached 5 minutes.
+Avatars are keyed by NetID (the same NetID Yalies/CAS gives us at login), so any Yale app that knows a student's NetID can show their YaleMoji.
+
+### Image URL (no key needed)
+
+`GET /avatar/{netid}.svg` or `/avatar/{netid}.png` 302s to the user's current immutable face asset, so `<img src="https://yalemoji.example/avatar/yaf23.png">` works with zero integration. If the user hasn't made an avatar (or the NetID is invalid), it redirects to a default silhouette (`/assets/default-avatar.{svg,png}`) instead of 404ing, so images never break. Rate-limited per IP (300/min). The background isn't exposed here; use the JSON APIs for `background_url`.
+
+### JSON APIs (API key required)
+
+Send `Authorization: Bearer <key>` (see [API keys](#api-keys)). Responses are `Cache-Control: private, max-age=300`; each key is rate-limited to 1200 requests/min.
+
+- `GET /api/v1/users/{netid}` — `{ netid, avatar: { version, png_url, svg_url, background_url } }`, 404 if the user hasn't saved one yet.
 - `GET /api/v1/users/{netid}/avatar` — just the avatar object.
-- `GET /avatar/{netid}.svg` or `/avatar/{netid}.png` — 302s straight to the current immutable face asset, so `<img src="https://yalemoji.example/avatar/yaf23.svg">` works with zero API integration. (The background isn't exposed through this shorthand route — use the JSON APIs for `background_url`.)
+- `POST /api/v1/lookup` with `{ "netids": ["abc123", "xyz9"] }` (max 100) — `{ "users": { "abc123": { version, png_url, ... }, "xyz9": null } }`. Every requested NetID (lowercased) is a key; `null` means no avatar. Use this for pages that show many people.
 
-These read endpoints are unauthenticated and rate-limited per IP (300/min) since they're meant for programmatic consumption. YaleMoji never re-serves the image bytes itself — consumers load the returned URLs directly from Cloud Storage/CDN.
+Errors: `401 missing_api_key` / `401 invalid_api_key`, `429 rate_limited` (with `Retry-After`).
+
+```bash
+curl -H "Authorization: Bearer $YALEMOJI_API_KEY" https://yalemoji.example/api/v1/users/abc123
+curl -X POST -H "Authorization: Bearer $YALEMOJI_API_KEY" -H "Content-Type: application/json" \
+  -d '{"netids":["abc123","xyz9"]}' https://yalemoji.example/api/v1/lookup
+```
+
+Call these from your app's **server**, not the browser, so the key stays secret.
+
+### API keys
+
+Each consuming app gets its own key so it can be revoked independently. Only the SHA-256 hash is stored (`apiKeys/{keyId}`, with `app`, `description`, `createdAt`, `revokedAt`).
+
+```bash
+gcloud auth application-default login
+export GOOGLE_CLOUD_PROJECT=yalemoji
+npm run api-keys -- create coursetable "CourseTable prod (owner: abc123)"   # prints the key once
+npm run api-keys -- list
+npm run api-keys -- revoke <keyId>   # stops working within ~1 minute
+```
+
+YaleMoji never re-serves the image bytes itself — consumers load the returned URLs directly from Cloud Storage/CDN.
 
 ### One-time bucket setup
 
