@@ -14,7 +14,7 @@ export const yalemojiApp: YaleApp = {
   name: "YaleMoji",
   aliases: [],
   href: "https://yalemoji.com",
-  image: "/apps-panel/yalemoji.png",
+  image: "/apps-panel/yalemoji-waffle.png",
   imageSize: "large",
   roundedImage: true
 };
