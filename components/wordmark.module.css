@@ -11,6 +11,18 @@
   height: calc(var(--type-logo) * var(--leading-ui));
 }
 
+.logoDark {
+  display: none;
+}
+
+:global(:root[data-theme="dark"]) .logoLight {
+  display: none;
+}
+
+:global(:root[data-theme="dark"]) .logoDark {
+  display: block;
+}
+
 .wordmark:focus-visible {
   outline: var(--focus-width) solid var(--focus);
   outline-offset: var(--focus-offset);
