@@ -5,7 +5,7 @@ export type YaleApp = {
   href?: string;
   image: string;
   imageShift?: "up" | "upMore";
-  imageSize?: "xlarge";
+  imageSize?: "large" | "xlarge";
   roundedImage?: boolean;
 };
 
@@ -15,6 +15,7 @@ export const yalemojiApp: YaleApp = {
   aliases: [],
   href: "https://yalemoji.com",
   image: "/apps-panel/yalemoji.png",
+  imageSize: "large",
   roundedImage: true
 };
 
@@ -24,7 +25,7 @@ export const yaleApps: readonly YaleApp[] = [
   { id: "majoraudit", name: "MajorAudit", aliases: ["audit"], image: "/apps-panel/majoraudit.webp" },
   { id: "yalies", name: "Yalies", aliases: [], href: "https://yalies.io", image: "/apps-panel/yalies.png" },
   { id: "ylabs", name: "y/labs", aliases: ["yalelabs", "labs"], href: "https://yalelabs.io", image: "/apps-panel/ylabs.png", imageShift: "up" },
-  { id: "yalemeals", name: "Yale Meals", aliases: ["yalesmeals", "yalemenus", "meals", "menus"], href: "https://apps.apple.com/us/app/yalemeals/id6755962674", image: "/apps-panel/yale-menus.png", imageShift: "upMore", imageSize: "xlarge" },
+  { id: "yalemeals", name: "Yale Meals", aliases: ["yalesmeals", "yalemenus", "meals", "menus"], href: "https://apps.apple.com/us/app/yalemeals/id6755962674", image: "/apps-panel/yale-menus.png" },
   { id: "yaleclubs", name: "Yale Clubs", aliases: ["yclubs", "clubs"], href: "https://yaleclubs.io", image: "/apps-panel/yclubs.svg" },
   { id: "yaleims", name: "Yale IMs", aliases: ["ims", "intramurals"], href: "https://yaleims.com", image: "/apps-panel/yaleims.png", imageShift: "up" }
 ];

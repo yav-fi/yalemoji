@@ -45,6 +45,7 @@ export function AppsDropdown() {
                     className={[
                       app.imageShift === "upMore" ? styles.imageUpMore : "",
                       app.imageShift === "up" ? styles.imageUp : "",
+                      app.imageSize === "large" ? styles.imageLarge : "",
                       app.imageSize === "xlarge" ? styles.imageExtraLarge : "",
                       app.roundedImage ? styles.imageRounded : ""
                     ].filter(Boolean).join(" ")}

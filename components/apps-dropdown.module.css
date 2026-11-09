@@ -98,6 +98,7 @@
 
 .appIcon .imageUp { transform: translateY(var(--app-image-shift)); }
 .appIcon .imageUpMore { transform: translateY(var(--app-image-shift-more)); }
+.appIcon .imageLarge { width: 2.5rem; height: 2.5rem; }
 .appIcon .imageExtraLarge { width: var(--app-icon-extra-size); height: var(--app-icon-extra-size); max-width: none; }
 .appIcon .imageRounded { border-radius: var(--radius-sm); }
 
