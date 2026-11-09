@@ -39,7 +39,7 @@ describe("CreateExperience", () => {
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Your Yale apps" }).querySelectorAll("img")).toHaveLength(8);
     expect(Array.from(screen.getByRole("group", { name: "Your Yale apps" }).querySelectorAll("img"), (image) => image.alt)).toEqual([
-      "CourseTable", "y/meets", "MajorAudit", "Yalies", "y/labs", "Yale Meals", "Yale Clubs", "Yale IMs"
+      "CourseTable", "ymeets", "MajorAudit", "Yalies", "y/labs", "YaleMeals", "YaleClubs", "YaleIMs"
     ]);
     expect(screen.getByRole("img", { name: "MajorAudit" })).toHaveAttribute("src", expect.stringContaining("majoraudit.webp"));
     expect(screen.queryByText(/From .* to everywhere/)).not.toBeInTheDocument();

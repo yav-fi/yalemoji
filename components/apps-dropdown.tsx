@@ -5,7 +5,7 @@ import { yaleApps, yalemojiApp, type YaleApp } from "@/config/yale-apps";
 import { useDropdown } from "./use-dropdown";
 import styles from "./apps-dropdown.module.css";
 
-const appOrder = ["coursetable", "yalies", "yaleclubs", "ymeets", "yalemoji", "yaleims", "ylabs", "yalemeals"];
+const appOrder = ["coursetable", "yalies", "yalemeals", "ymeets", "yalemoji", "ylabs", "yaleims", "yaleclubs"];
 const apps = [...yaleApps, yalemojiApp]
   .filter((app): app is YaleApp & { href: string } => typeof app.href === "string")
   .sort((a, b) => appOrder.indexOf(a.id) - appOrder.indexOf(b.id));

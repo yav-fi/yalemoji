@@ -21,13 +21,13 @@ export const yalemojiApp: YaleApp = {
 
 export const yaleApps: readonly YaleApp[] = [
   { id: "coursetable", name: "CourseTable", aliases: [], href: "https://coursetable.com", image: "/apps-panel/coursetable.svg" },
-  { id: "ymeets", name: "y/meets", aliases: ["yalemeets", "meets"], href: "https://ymeets.com", image: "/apps-panel/ymeetslogo.png", roundedImage: true },
+  { id: "ymeets", name: "ymeets", aliases: ["yalemeets", "meets"], href: "https://ymeets.com", image: "/apps-panel/ymeetslogo.png", roundedImage: true },
   { id: "majoraudit", name: "MajorAudit", aliases: ["audit"], image: "/apps-panel/majoraudit.webp" },
   { id: "yalies", name: "Yalies", aliases: [], href: "https://yalies.io", image: "/apps-panel/yalies.png" },
   { id: "ylabs", name: "y/labs", aliases: ["yalelabs", "labs"], href: "https://yalelabs.io", image: "/apps-panel/ylabs.png", imageShift: "up" },
-  { id: "yalemeals", name: "Yale Meals", aliases: ["yalesmeals", "yalemenus", "meals", "menus"], href: "https://apps.apple.com/us/app/yalemeals/id6755962674", image: "/apps-panel/yale-menus.png" },
-  { id: "yaleclubs", name: "Yale Clubs", aliases: ["yclubs", "clubs"], href: "https://yaleclubs.io", image: "/apps-panel/yclubs.svg" },
-  { id: "yaleims", name: "Yale IMs", aliases: ["ims", "intramurals"], href: "https://yaleims.com", image: "/apps-panel/yaleims.png", imageShift: "up" }
+  { id: "yalemeals", name: "YaleMeals", aliases: ["yalesmeals", "yalemenus", "meals", "menus"], href: "https://apps.apple.com/us/app/yalemeals/id6755962674", image: "/apps-panel/yale-menus.png" },
+  { id: "yaleclubs", name: "YaleClubs", aliases: ["yclubs", "clubs"], href: "https://yaleclubs.io", image: "/apps-panel/yclubs.svg" },
+  { id: "yaleims", name: "YaleIMs", aliases: ["ims", "intramurals"], href: "https://yaleims.com", image: "/apps-panel/yaleims.png", imageShift: "up" }
 ];
 
 export function findReferringApp(ref: string | null | undefined): YaleApp | null {

@@ -13,7 +13,7 @@ describe("SiteHeader", () => {
       "https://coursetable.com"
     );
     expect(screen.getByRole("link", { name: "Yalies" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Yale Meals" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "YaleMeals" })).toBeInTheDocument();
   });
 
   it("does not render a My Library item anywhere", () => {
