@@ -8,6 +8,10 @@ const AVATAR_SAVE_LIMIT = 20;
 const AVATAR_SAVE_WINDOW_MS = 60 * 60 * 1000;
 const AVATAR_READ_LIMIT = 300;
 const AVATAR_READ_WINDOW_MS = 60 * 1000;
+// Per API key: a consuming app's server may proxy many users' page loads.
+const API_KEY_READ_LIMIT = 1200;
+const API_KEY_READ_WINDOW_MS = 60 * 1000;
+export const MAX_BATCH_LOOKUP = 100;
 
 export type CurrentAvatar = {
   version: number;
@@ -84,6 +88,21 @@ export function checkAvatarReadRateLimit(
     AVATAR_READ_WINDOW_MS,
     nowMs,
     { ipHash }
+  );
+}
+
+export function checkApiKeyReadRateLimit(
+  keyId: string,
+  nowMs = Date.now(),
+  db: Firestore = getFirestore()
+) {
+  return checkFirestoreRateLimit(
+    db,
+    `avatar-read-key:${keyId}`,
+    API_KEY_READ_LIMIT,
+    API_KEY_READ_WINDOW_MS,
+    nowMs,
+    { keyId }
   );
 }
 
@@ -174,7 +193,29 @@ export async function getCurrentAvatar(
   netid: string,
   db: Firestore = getFirestore()
 ): Promise<CurrentAvatar | null> {
-  const snapshot = await db.collection("users").doc(netid).get();
+  return avatarFromSnapshot(await db.collection("users").doc(netid).get());
+}
+
+/** Reads many users' current avatars in one Firestore round trip. */
+export async function getCurrentAvatars(
+  netids: string[],
+  db: Firestore = getFirestore()
+): Promise<Map<string, CurrentAvatar | null>> {
+  const result = new Map<string, CurrentAvatar | null>();
+  if (netids.length === 0) return result;
+
+  const refs = netids.map((netid) => db.collection("users").doc(netid));
+  const snapshots = await db.getAll(...refs);
+  snapshots.forEach((snapshot, index) => {
+    result.set(netids[index], avatarFromSnapshot(snapshot));
+  });
+  return result;
+}
+
+function avatarFromSnapshot(snapshot: {
+  exists: boolean;
+  get(field: string): unknown;
+}): CurrentAvatar | null {
   if (!snapshot.exists) return null;
 
   const version = Number(snapshot.get("avatarVersion") ?? 0);
