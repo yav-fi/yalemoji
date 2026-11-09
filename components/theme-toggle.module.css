@@ -4,6 +4,7 @@
   height: 2rem;
   flex-shrink: 0;
   place-items: center;
+  transform: translateX(4px);
   padding: 0;
   border: 0;
   border-radius: var(--radius-sm);

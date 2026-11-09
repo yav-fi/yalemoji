@@ -23,6 +23,7 @@ export function SiteHeader({
       <div className={styles.inner}>
         <Wordmark />
         <nav aria-label="Primary navigation" className={styles.nav}>
+          <ThemeToggle />
           {netid ? (
             <>
               <div className={styles.textLinks}>
@@ -31,7 +32,6 @@ export function SiteHeader({
                 </Link>
               </div>
               <div className={styles.accountControls}>
-                <ThemeToggle />
                 <AppsDropdown />
                 <ProfileMenu
                   activePage={activePage}
@@ -43,10 +43,7 @@ export function SiteHeader({
               </div>
             </>
           ) : (
-            <>
-              <a className={styles.createButton} href="/api/auth/login">Create now</a>
-              <ThemeToggle />
-            </>
+            <a className={styles.createButton} href="/api/auth/login">Create now</a>
           )}
         </nav>
       </div>
