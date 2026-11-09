@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   avatarBackgroundOptions,
@@ -283,14 +283,6 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(href);
 }
 
-function isSaveBody(body: unknown): body is { version: number } {
-  return (
-    typeof body === "object" &&
-    body !== null &&
-    typeof (body as { version?: unknown }).version === "number"
-  );
-}
-
 function isIncompleteBody(body: unknown): body is { missing: RequiredFeature[] } {
   return (
     typeof body === "object" &&
@@ -321,7 +313,13 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
   const [accessories, setAccessories] = useState<AccessorySelections>({});
   const [pendingAction, setPendingAction] = useState<PngAction | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (!saved) return;
+    const timer = window.setTimeout(() => setSaved(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [saved]);
 
   const config = useMemo<AvatarConfig>(
     () => ({
@@ -350,7 +348,7 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
         defaultAvatarBackground
     );
     setExportError(null);
-    setSaveMessage(null);
+    setSaved(false);
   }
 
   useAvatarDraft({ config, defaults: defaultConfig, netid, onRestore: applyConfig });
@@ -404,7 +402,7 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
       throw new Error("Your YaleMoji could not be saved.");
     }
 
-    setSaveMessage(`Saved (v${isSaveBody(body) ? body.version : "?"})`);
+    setSaved(true);
     router.refresh();
   }
 
@@ -412,7 +410,7 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
     if (pendingAction) return;
     setPendingAction(action);
     setExportError(null);
-    setSaveMessage(null);
+    if (action === "save") setSaved(false);
     const missing = missingRequiredFeatures(config);
     if (missing.length > 0) {
       setExportError(missingFeaturesMessage(missing, action));
@@ -630,7 +628,7 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
             <div className={styles.footerActions}>
               <DownloadButton pendingAction={pendingAction} onDownload={runPngAction} />
               <button
-                aria-label="Save avatar"
+                aria-label={pendingAction === "save" ? "Saving avatar" : saved ? "Saved" : "Save avatar"}
                 className={`${styles.export} ${styles.saveAction}`}
                 disabled={pendingAction !== null}
                 onClick={() => runPngAction("save")}
@@ -640,16 +638,12 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
                   <path d="M5 4h12l2 2v14H5z" />
                   <path d="M8 4v6h8V4M8 20v-6h8v6" />
                 </svg>
-                {pendingAction === "save" ? "Saving…" : "Save"}
+                <span aria-live="polite">{pendingAction === "save" ? "Saving…" : saved ? "Saved" : "Save"}</span>
               </button>
             </div>
-            {exportError || saveMessage ? (
+            {exportError ? (
               <div className={styles.footerStatus}>
-                {exportError ? (
-                  <p className={styles.exportError} role="alert">{exportError}</p>
-                ) : (
-                  <p className={styles.saveMessage} role="status">{saveMessage}</p>
-                )}
+                <p className={styles.exportError} role="alert">{exportError}</p>
               </div>
             ) : null}
           </div>

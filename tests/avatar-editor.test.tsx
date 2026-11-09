@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AvatarEditor } from "@/components/avatar-editor";
 import { normalizeAvatarSvg } from "@/lib/avatar-svg";
@@ -25,6 +25,7 @@ describe("AvatarEditor", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -171,7 +172,8 @@ describe("AvatarEditor", () => {
     expect(normalized).toContain('stroke="var(--avatar-secondary)"');
   });
 
-  it("saves by posting the current config to the server and shows the returned version", async () => {
+  it("shows Saved on the button for three seconds without displaying the version", async () => {
+    vi.useFakeTimers();
     vi.stubGlobal(
       "fetch",
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -193,10 +195,17 @@ describe("AvatarEditor", () => {
 
     render(<AvatarEditor />);
     selectEyesAndMouth();
-    fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
-
-    expect(await screen.findByText("Saved (v3)")).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.getByRole("button", { name: "Saved" })).toHaveTextContent("Saved");
+    expect(screen.queryByText(/v3/)).not.toBeInTheDocument();
     expect(refresh).toHaveBeenCalledOnce();
+    await act(() => vi.advanceTimersByTimeAsync(2999));
+    expect(screen.getByRole("button", { name: "Saved" })).toBeInTheDocument();
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(screen.getByRole("button", { name: "Save avatar" })).toHaveTextContent("Save");
   });
 
   it("shows a friendly message when saving is rate limited", async () => {
