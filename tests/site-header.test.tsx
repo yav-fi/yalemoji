@@ -23,13 +23,15 @@ describe("SiteHeader", () => {
     expect(screen.queryByText("My Library")).not.toBeInTheDocument();
   });
 
-  it("greets the signed-in user with About, Updates, and a working logout link", () => {
-    render(<SiteHeader avatarBackgroundUrl={null} avatarUrl={null} firstName="Alex" netid="abc123" />);
+  it("shows About, Updates, and logout without a greeting or NetID", () => {
+    render(<SiteHeader avatarBackgroundUrl={null} avatarUrl={null} netid="abc123" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Profile menu" }));
 
-    const greeting = screen.getByText("Hello, Alex");
-    const menu = within(greeting.parentElement!.parentElement!);
+    const dropdownId = screen.getByRole("button", { name: "Profile menu" }).getAttribute("aria-controls")!;
+    const menu = within(document.getElementById(dropdownId)!);
+    expect(menu.queryByText(/Hello,/)).not.toBeInTheDocument();
+    expect(menu.queryByText("abc123")).not.toBeInTheDocument();
     expect(menu.queryByRole("link", { name: "Editor" })).not.toBeInTheDocument();
     expect(menu.getByRole("link", { name: "About" })).toHaveAttribute("href", "/about");
     expect(menu.getByRole("link", { name: "Updates" })).toHaveAttribute("href", "/updates");
@@ -68,8 +70,9 @@ describe("SiteHeader", () => {
     expect(buttonImages[1]).toHaveAttribute("src", avatarUrl);
 
     fireEvent.click(profileButton);
-    const dropdown = screen.getByText("Hello, abc123").closest("div");
-    const dropdownImages = dropdown?.querySelectorAll("img") ?? [];
+    const dropdownId = profileButton.getAttribute("aria-controls")!;
+    const identityHeader = document.getElementById(dropdownId)!.firstElementChild!;
+    const dropdownImages = identityHeader.querySelectorAll("img");
     expect(dropdownImages).toHaveLength(2);
     expect(dropdownImages[0]).toHaveAttribute("src", backgroundUrl);
     expect(dropdownImages[1]).toHaveAttribute("src", avatarUrl);

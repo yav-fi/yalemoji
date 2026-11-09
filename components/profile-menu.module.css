@@ -67,14 +67,10 @@
   align-items: center;
   justify-content: center;
   min-height: var(--profile-header-height);
-  padding: var(--space-3) var(--space-4);
+  padding: 0.7rem 1rem 0.8rem;
   overflow: hidden;
   background: var(--accent);
   color: var(--accent-foreground);
-}
-
-.identityHeader[data-saved="true"] {
-  min-height: 8.25rem;
 }
 
 :global(:root[data-theme="dark"]) .identityHeader {
@@ -84,30 +80,8 @@
 
 .identityHeader .faceLayer {
   width: var(--profile-menu-avatar-width);
-  height: auto;
+  height: var(--profile-menu-avatar-width);
   object-fit: contain;
-}
-
-.identityHeader[data-saved="true"] .faceLayer {
-  width: 5.75rem;
-  height: 5.75rem;
-  margin-block: -0.55rem -0.85rem;
-}
-
-.greeting {
-  position: relative;
-  z-index: 1;
-  margin-top: 0.4rem;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  font-size: 0.78rem;
-  font-weight: var(--weight-semibold);
-}
-
-.identityHeader[data-saved="true"] .greeting {
-  padding: 3px 9px;
-  border-radius: var(--radius-full);
-  background: rgba(0, 0, 0, 0.55);
 }
 
 .menuItems {
@@ -164,6 +138,12 @@ a.dropdownItem:focus-visible {
 .dropdownItem:focus-visible {
   outline: var(--focus-width) solid var(--focus);
   outline-offset: var(--focus-offset);
+}
+
+@media (max-width: 767.5px) {
+  .identityHeader {
+    min-height: 10.5rem;
+  }
 }
 
 @keyframes dropdownExpand {

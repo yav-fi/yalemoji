@@ -13,18 +13,15 @@ export function ProfileMenu({
   avatarBackgroundUrl,
   avatarUrl,
   netid,
-  firstName,
   activePage
 }: {
   avatarBackgroundUrl: string | null;
   avatarUrl: string | null;
   netid: string | null;
-  firstName?: string | null;
   activePage?: "home" | "editor" | "about" | "updates";
 }) {
   const { closeDropdown, closing, open, toggleDropdown, wrapperRef } = useDropdown();
   const dropdownId = useId();
-  const hasAvatar = Boolean(avatarUrl);
   const avatarSrc = avatarUrl ?? defaultAvatarSrc;
 
   return (
@@ -58,7 +55,7 @@ export function ProfileMenu({
 
       {open ? (
         <div id={dropdownId} inert={closing} className={`${styles.dropdown} ${closing ? styles.closing : ""}`}>
-          <div className={styles.identityHeader} data-saved={hasAvatar ? "true" : "false"}>
+          <div className={styles.identityHeader}>
             {avatarBackgroundUrl ? (
               <Image
                 alt=""
@@ -71,12 +68,11 @@ export function ProfileMenu({
             <Image
               alt=""
               className={styles.faceLayer}
-              height={92}
+              height={80}
               src={avatarSrc}
               unoptimized
-              width={92}
+              width={80}
             />
-            {netid ? <span className={styles.greeting}>Hello, {firstName?.trim() || netid}</span> : null}
           </div>
           <div className={styles.menuItems}>
             <Link aria-current={activePage === "about" ? "page" : undefined} className={styles.dropdownItem} href="/about" onClick={closeDropdown}>

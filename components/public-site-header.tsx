@@ -12,7 +12,6 @@ export async function PublicSiteHeader({ activePage }: { activePage: "home" | "a
       avatarBackgroundUrl={avatar?.backgroundUrl ?? null}
       avatarUrl={avatar?.pngUrl ?? null}
       netid={user?.netid ?? null}
-      firstName={user?.firstName ?? null}
     />
   );
 }

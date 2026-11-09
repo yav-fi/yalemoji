@@ -9,13 +9,11 @@ export function SiteHeader({
   avatarBackgroundUrl,
   avatarUrl,
   netid = null,
-  firstName,
   activePage = "editor"
 }: {
   avatarBackgroundUrl?: string | null;
   avatarUrl?: string | null;
   netid?: string | null;
-  firstName?: string | null;
   activePage?: "home" | "editor" | "about" | "updates";
 }) {
   return (
@@ -38,7 +36,6 @@ export function SiteHeader({
                   avatarBackgroundUrl={avatarBackgroundUrl ?? null}
                   avatarUrl={avatarUrl ?? null}
                   netid={netid}
-                  firstName={firstName}
                 />
               </div>
             </>
