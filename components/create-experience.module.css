@@ -1,4 +1,7 @@
 .page {
+  --gradient-blue: #6497cd;
+  --gradient-teal: #73c7c1;
+  --gradient-middle: #70b1c6;
   position: relative;
   isolation: isolate;
   display: flex;
@@ -8,8 +11,43 @@
   justify-content: center;
   overflow: hidden;
   padding: 2rem 1.25rem 1.5rem;
-  background: linear-gradient(125deg, rgb(33 106 184 / 70%), rgb(40 180 170 / 65%)), #fff;
+  background: linear-gradient(125deg, var(--gradient-blue), var(--gradient-teal));
   color: #163656;
+}
+
+.page::before,
+.page::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.page::before {
+  z-index: -2;
+  top: 50%;
+  left: 50%;
+  width: 150vmax;
+  height: 150vmax;
+  background: conic-gradient(
+    from 125deg,
+    var(--gradient-blue),
+    var(--gradient-middle),
+    var(--gradient-teal),
+    var(--gradient-middle),
+    var(--gradient-blue)
+  );
+  transform: translate(-50%, -50%);
+  animation: gradientRotate 48s linear infinite;
+}
+
+.page::after {
+  z-index: -1;
+  inset: -20%;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgb(255 255 255 / 22%), transparent 55%),
+    radial-gradient(ellipse at 80% 70%, rgb(40 180 170 / 24%), transparent 55%),
+    radial-gradient(ellipse at 65% 15%, rgb(33 106 184 / 20%), transparent 50%);
+  animation: gradientDrift 19s ease-in-out infinite alternate;
 }
 
 .scene {
@@ -51,9 +89,38 @@
   box-shadow: 0 8px 28px rgb(0 53 107 / 24%);
 }
 
+.createButtonLabel {
+  color: var(--gradient-blue);
+}
+
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .createButtonLabel {
+    background: linear-gradient(110deg, var(--gradient-blue), var(--gradient-teal), var(--gradient-blue));
+    background-size: 250% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: gradientText 9s ease-in-out infinite alternate;
+  }
+}
+
 .createButton:focus-visible {
   outline: var(--focus-width) solid #fff;
   outline-offset: var(--focus-offset);
+}
+
+@keyframes gradientRotate {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes gradientDrift {
+  from { transform: translate(-4%, -3%) scale(1); opacity: 0.65; }
+  to { transform: translate(4%, 3%) scale(1.12); opacity: 1; }
+}
+
+@keyframes gradientText {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
 }
 
 .scene[data-phase="blurring"] .backdrop,
@@ -203,6 +270,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .page::before,
+  .page::after,
+  .createButtonLabel,
   .orbit,
   .counterRotation,
   .appImage {
