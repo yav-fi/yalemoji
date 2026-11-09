@@ -9,6 +9,15 @@ export type YaleApp = {
   roundedImage?: boolean;
 };
 
+export const yalemojiApp: YaleApp = {
+  id: "yalemoji",
+  name: "YaleMoji",
+  aliases: [],
+  href: "https://yalemoji.com",
+  image: "/apps-panel/yalemoji.png",
+  roundedImage: true
+};
+
 export const yaleApps: readonly YaleApp[] = [
   { id: "coursetable", name: "CourseTable", aliases: [], href: "https://coursetable.com", image: "/apps-panel/coursetable.svg" },
   { id: "ymeets", name: "y/meets", aliases: ["yalemeets", "meets"], href: "https://ymeets.com", image: "/apps-panel/ymeetslogo.png", roundedImage: true },
