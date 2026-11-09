@@ -16,6 +16,7 @@ type YaliesAssertionPayload = {
   iss: "yalies";
   aud: "yalemoji";
   netid: string;
+  firstName?: string;
   iat: number;
   exp: number;
   state: string;
@@ -24,11 +25,17 @@ type YaliesAssertionPayload = {
 type SessionPayload = {
   v: 1;
   netid: string;
+  firstName?: string;
   iat: number;
   exp: number;
 };
 
-export type CurrentUser = { netid: string };
+export type CurrentUser = { netid: string; firstName?: string };
+
+function readFirstName(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  return value.trim().slice(0, 80) || undefined;
+}
 
 function nowInSeconds() {
   return Math.floor(Date.now() / 1000);
@@ -139,18 +146,24 @@ export function verifyYaliesAssertion(
     return null;
   }
 
-  return { netid: candidate.netid };
+  const firstName = readFirstName(candidate.firstName);
+  return { netid: candidate.netid, ...(firstName ? { firstName } : {}) };
 }
 
 export function createSessionToken(
   netid: string,
   secret: string,
-  now = nowInSeconds()
+  now = nowInSeconds(),
+  firstName?: string
 ): string {
   if (!isValidNetid(netid)) throw new Error("Invalid NetID");
+  const normalizedFirstName = readFirstName(firstName);
 
   return createSignedToken(
-    { v: 1, netid, iat: now, exp: now + SESSION_TTL_SECONDS } satisfies SessionPayload,
+    {
+      v: 1, netid, iat: now, exp: now + SESSION_TTL_SECONDS,
+      ...(normalizedFirstName ? { firstName: normalizedFirstName } : {})
+    } satisfies SessionPayload,
     secret
   );
 }
@@ -177,7 +190,8 @@ export function verifySessionToken(
     return null;
   }
 
-  return { netid: candidate.netid };
+  const firstName = readFirstName(candidate.firstName);
+  return { netid: candidate.netid, ...(firstName ? { firstName } : {}) };
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {

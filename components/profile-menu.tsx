@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useId } from "react";
 import { useDropdown } from "./use-dropdown";
+import { ProfileMenuIcon } from "./profile-menu-icon";
 import styles from "./profile-menu.module.css";
 
 const defaultAvatarSrc = "/assets/landing%20avatar.png?v=20260719-1";
@@ -12,11 +13,13 @@ export function ProfileMenu({
   avatarBackgroundUrl,
   avatarUrl,
   netid,
+  firstName,
   activePage
 }: {
   avatarBackgroundUrl: string | null;
   avatarUrl: string | null;
   netid: string | null;
+  firstName?: string | null;
   activePage?: "home" | "editor" | "about" | "updates";
 }) {
   const { closeDropdown, closing, open, toggleDropdown, wrapperRef } = useDropdown();
@@ -73,20 +76,17 @@ export function ProfileMenu({
               unoptimized
               width={92}
             />
-            {netid ? <span>{netid}</span> : null}
+            {netid ? <span className={styles.greeting}>Hello, {firstName?.trim() || netid}</span> : null}
           </div>
           <div className={styles.menuItems}>
-            <Link aria-current={activePage === "editor" ? "page" : undefined} className={styles.dropdownItem} href="/editor" onClick={closeDropdown}>
-              <span aria-hidden="true" className={styles.itemIcon}>✎</span> Editor
-            </Link>
             <Link aria-current={activePage === "about" ? "page" : undefined} className={styles.dropdownItem} href="/about" onClick={closeDropdown}>
-              <span aria-hidden="true" className={styles.itemIcon}>ⓘ</span> About
+              <span className={styles.itemIcon}><ProfileMenuIcon name="about" /></span> About
             </Link>
             <Link aria-current={activePage === "updates" ? "page" : undefined} className={styles.dropdownItem} href="/updates" onClick={closeDropdown}>
-              <span aria-hidden="true" className={styles.itemIcon}>🎁</span> Updates
+              <span className={styles.itemIcon}><ProfileMenuIcon name="updates" /></span> Updates
             </Link>
             <a className={`${styles.dropdownItem} ${styles.authItem}`} href={netid ? "/api/auth/logout" : "/api/auth/login"}>
-              <span aria-hidden="true" className={styles.itemIcon}>↗</span> {netid ? "Log out" : "Log in"}
+              <span className={styles.itemIcon}><ProfileMenuIcon name="logout" /></span> {netid ? "Log out" : "Log in"}
             </a>
           </div>
         </div>

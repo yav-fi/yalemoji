@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { SiteHeader } from "@/components/site-header";
 
@@ -23,12 +23,16 @@ describe("SiteHeader", () => {
     expect(screen.queryByText("My Library")).not.toBeInTheDocument();
   });
 
-  it("opens the profile menu with the signed-in netid and a working logout link", () => {
-    render(<SiteHeader avatarBackgroundUrl={null} avatarUrl={null} netid="abc123" />);
+  it("greets the signed-in user with About, Updates, and a working logout link", () => {
+    render(<SiteHeader avatarBackgroundUrl={null} avatarUrl={null} firstName="Alex" netid="abc123" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Profile menu" }));
 
-    expect(screen.getByText("abc123")).toBeInTheDocument();
+    const greeting = screen.getByText("Hello, Alex");
+    const menu = within(greeting.parentElement!.parentElement!);
+    expect(menu.queryByRole("link", { name: "Editor" })).not.toBeInTheDocument();
+    expect(menu.getByRole("link", { name: "About" })).toHaveAttribute("href", "/about");
+    expect(menu.getByRole("link", { name: "Updates" })).toHaveAttribute("href", "/updates");
     expect(screen.getByRole("link", { name: "Log out" })).toHaveAttribute(
       "href",
       "/api/auth/logout"
@@ -64,7 +68,7 @@ describe("SiteHeader", () => {
     expect(buttonImages[1]).toHaveAttribute("src", avatarUrl);
 
     fireEvent.click(profileButton);
-    const dropdown = screen.getByText("abc123").closest("div");
+    const dropdown = screen.getByText("Hello, abc123").closest("div");
     const dropdownImages = dropdown?.querySelectorAll("img") ?? [];
     expect(dropdownImages).toHaveLength(2);
     expect(dropdownImages[0]).toHaveAttribute("src", backgroundUrl);

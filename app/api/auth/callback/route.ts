@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   );
   response.cookies.set(
     SESSION_COOKIE,
-    createSessionToken(user.netid, sessionSecret),
+    createSessionToken(user.netid, sessionSecret, undefined, user.firstName),
     secureCookieOptions(SESSION_TTL_SECONDS)
   );
   return response;

@@ -44,6 +44,12 @@ describe("Yalies assertion verification", () => {
     expect(verifyYaliesAssertion(assertion(), "wrong", state, now)).toBeNull();
   });
 
+  it("reads a preferred first name only from a verified assertion", () => {
+    expect(verifyYaliesAssertion(assertion({ firstName: "  Alex  " }), authSecret, state, now)).toEqual({ netid: "abc123", firstName: "Alex" });
+    expect(verifyYaliesAssertion(assertion({ firstName: "Alex" }), "wrong", state, now)).toBeNull();
+    expect(verifyYaliesAssertion(assertion({ firstName: 123 }), authSecret, state, now)).toEqual({ netid: "abc123" });
+  });
+
   it("rejects a changed NetID", () => {
     const token = assertion();
     const [encoded, signature] = token.split(".");
@@ -84,6 +90,14 @@ describe("Yalies assertion verification", () => {
 });
 
 describe("YaleMoji sessions", () => {
+  it("carries the verified first name into the signed session", () => {
+    const token = createSessionToken("abc123", sessionSecret, now, "Alex");
+    expect(verifySessionToken(token, sessionSecret, now + 1)).toEqual({ netid: "abc123", firstName: "Alex" });
+    const [encoded, signature] = token.split(".");
+    const payload = JSON.parse(Buffer.from(encoded, "base64url").toString());
+    payload.firstName = "Someone else";
+    expect(verifySessionToken(`${Buffer.from(JSON.stringify(payload)).toString("base64url")}.${signature}`, sessionSecret, now + 1)).toBeNull();
+  });
   it("round-trips a valid session", () => {
     const token = createSessionToken("abc123", sessionSecret, now);
     expect(verifySessionToken(token, sessionSecret, now + 1)).toEqual({

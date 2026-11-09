@@ -18,6 +18,7 @@ export default async function EditorPage() {
         avatarBackgroundUrl={avatar?.backgroundUrl ?? null}
         avatarUrl={avatar?.pngUrl ?? null}
         netid={user.netid}
+        firstName={user.firstName ?? null}
       />
       <main>
         <AvatarEditor netid={user.netid} />
