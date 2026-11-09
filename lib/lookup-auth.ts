@@ -6,10 +6,11 @@ export type LookupAuthResult =
   | { ok: true; client: ApiKeyClient }
   | { ok: false; response: NextResponse };
 
-const AUTH_HEADERS = { "WWW-Authenticate": 'Bearer realm="yalemoji"' };
+const ERROR_HEADERS = { "Cache-Control": "no-store" };
+const AUTH_HEADERS = { ...ERROR_HEADERS, "WWW-Authenticate": 'Bearer realm="yalemoji"' };
 
 /**
- * Gate for the JSON lookup APIs: requires a valid, unrevoked app API key and
+ * Gate for all NetID lookup routes: requires a valid, unrevoked app API key and
  * applies that key's rate limit.
  */
 export async function authorizeLookup(request: NextRequest): Promise<LookupAuthResult> {
@@ -25,13 +26,15 @@ export async function authorizeLookup(request: NextRequest): Promise<LookupAuthR
   }
 
   let client: ApiKeyClient | null;
+  let rateLimit;
   try {
     client = await verifyApiKey(key);
+    if (client) rateLimit = await checkApiKeyReadRateLimit(client.keyId);
   } catch (error) {
-    console.error("API key verification failed", error);
+    console.error("Lookup authorization failed", error);
     return {
       ok: false,
-      response: NextResponse.json({ error: "server_error" }, { status: 500 })
+      response: NextResponse.json({ error: "server_error" }, { status: 503, headers: ERROR_HEADERS })
     };
   }
 
@@ -45,13 +48,12 @@ export async function authorizeLookup(request: NextRequest): Promise<LookupAuthR
     };
   }
 
-  const rateLimit = await checkApiKeyReadRateLimit(client.keyId);
-  if (!rateLimit.allowed) {
+  if (rateLimit && !rateLimit.allowed) {
     return {
       ok: false,
       response: NextResponse.json(
         { error: "rate_limited", retryAfterSeconds: rateLimit.retryAfterSeconds },
-        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
+        { status: 429, headers: { ...ERROR_HEADERS, "Retry-After": String(rateLimit.retryAfterSeconds) } }
       )
     };
   }

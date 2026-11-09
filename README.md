@@ -82,11 +82,15 @@ Saves are rate-limited per netid (20/hour) — generous for iterative editing, b
 
 ## Using avatars in other Yale apps
 
-Avatars are keyed by NetID (the same NetID Yalies/CAS gives us at login), so any Yale app that knows a student's NetID can show their YaleMoji.
+Approved Yale apps can resolve a NetID (the same NetID Yalies/CAS gives us at login) to an avatar using an app API key. Every NetID lookup route requires the key; the opaque, versioned image assets remain public and cacheable.
 
-### Image URL (no key needed)
+### Displaying images
 
-`GET /avatar/{netid}.svg` or `/avatar/{netid}.png` 302s to the user's current immutable face asset, so `<img src="https://yalemoji.example/avatar/yaf23.png">` works with zero integration. If the user hasn't made an avatar (or the NetID is invalid), it redirects to a default silhouette (`/assets/default-avatar.{svg,png}`) instead of 404ing, so images never break. Rate-limited per IP (300/min). The background isn't exposed here; use the JSON APIs for `background_url`.
+Call the JSON lookup API from your app's server, then use the returned `png_url` or `svg_url` as the browser's image source. These URLs contain an opaque ID and a revision number rather than a NetID. If the API reports no avatar, display `/assets/default-avatar.png` or `.svg`.
+
+`GET /avatar/{netid}.svg` or `/avatar/{netid}.png` is also available as a redirect for app servers, with `Authorization: Bearer <key>` required. It shares the JSON APIs' per-key rate limit. It cannot be used directly in an `<img>` tag because image tags cannot send this header; never put API keys in URLs or browser code.
+
+Authenticated image lookups redirect to the current asset, or to a default silhouette for a missing avatar or invalid NetID. Redirects use `Cache-Control: private, max-age=300`. Infrastructure failures return `503 server_error` with `Cache-Control: no-store` and no redirect, so an outage cannot cache a silhouette in place of an existing avatar. Authentication and rate-limit errors are also uncached. The background isn't exposed through this redirect; use `background_url` from the JSON APIs.
 
 ### JSON APIs (API key required)
 

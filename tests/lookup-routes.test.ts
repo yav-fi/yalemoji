@@ -29,6 +29,7 @@ const userRoute = await import("@/app/api/v1/users/[netid]/route");
 const lookupRoute = await import("@/app/api/v1/lookup/route");
 const imageRoute = await import("@/app/avatar/[handle]/route");
 const store = await import("@/lib/avatar-store");
+const apiKeys = await import("@/lib/api-keys");
 
 const auth = { authorization: `Bearer ${VALID_KEY}` };
 const ctx = <T extends Record<string, string>>(params: T) => ({ params: Promise.resolve(params) });
@@ -136,30 +137,77 @@ describe("POST /api/v1/lookup", () => {
 describe("GET /avatar/{netid}.{png,svg}", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  const get = (handle: string) =>
-    imageRoute.GET(new NextRequest(`https://yalemoji.com/avatar/${handle}`), ctx({ handle }));
+  const get = (handle: string, headers: Record<string, string> = auth) =>
+    imageRoute.GET(new NextRequest(`https://yalemoji.com/avatar/${handle}`, { headers }), ctx({ handle }));
 
-  it("stays public and redirects to the user's avatar", async () => {
+  it("requires an API key before resolving any NetID or fallback", async () => {
+    for (const handle of ["abc123.png", "zz99.svg", "invalid!.png"]) {
+      const res = await get(handle, {});
+      expect(res.status).toBe(401);
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(res.headers.get("location")).toBeNull();
+    }
+    expect(store.getCurrentAvatar).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid key without looking up the avatar", async () => {
+    const res = await get("abc123.png", { authorization: `Bearer ymk_${"b".repeat(43)}` });
+    expect(res.status).toBe(401);
+    expect(store.getCurrentAvatar).not.toHaveBeenCalled();
+  });
+
+  it("redirects authenticated callers to privately cached avatar URLs", async () => {
     const res = await get("abc123.png");
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("https://cdn/abc123.png");
+    expect(res.headers.get("cache-control")).toBe("private, max-age=300");
+    expect((await get("ABC123.svg")).headers.get("location")).toBe("https://cdn/abc123.svg");
   });
 
   it("falls back to the default image when there is no avatar", async () => {
     const png = await get("zz99.png");
     expect(png.status).toBe(302);
     expect(png.headers.get("location")).toBe("https://yalemoji.com/assets/default-avatar.png");
+    expect(png.headers.get("cache-control")).toBe("private, max-age=300");
 
     const svg = await get("zz99.svg");
     expect(svg.headers.get("location")).toBe("https://yalemoji.com/assets/default-avatar.svg");
   });
 
-  it("falls back for an invalid NetID and when the lookup fails", async () => {
+  it("falls back for an invalid NetID", async () => {
     expect((await get("Not_A_Netid!.png")).headers.get("location")).toContain("default-avatar.png");
+    expect(store.getCurrentAvatar).not.toHaveBeenCalled();
+  });
 
+  it("does not cache a fallback during an outage and recovers on the next request", async () => {
     vi.mocked(store.getCurrentAvatar).mockRejectedValueOnce(new Error("firestore down"));
     vi.spyOn(console, "error").mockImplementationOnce(() => {});
-    expect((await get("abc123.png")).headers.get("location")).toContain("default-avatar.png");
+    const res = await get("abc123.png");
+    expect(res.status).toBe(503);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("location")).toBeNull();
+    expect(await res.json()).toEqual({ error: "server_error" });
+    expect((await get("abc123.png")).headers.get("location")).toBe("https://cdn/abc123.png");
+  });
+
+  it("rate limits image lookups per API key", async () => {
+    vi.mocked(store.checkApiKeyReadRateLimit).mockResolvedValueOnce({ allowed: false, retryAfterSeconds: 12 });
+    const res = await get("abc123.png");
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).toBe("12");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(store.getCurrentAvatar).not.toHaveBeenCalled();
+  });
+
+  it.each(["key verification", "rate limiting"])("returns an uncached error if %s is unavailable", async (failure) => {
+    const operation = failure === "key verification" ? apiKeys.verifyApiKey : store.checkApiKeyReadRateLimit;
+    vi.mocked(operation).mockRejectedValueOnce(new Error("firestore down"));
+    vi.spyOn(console, "error").mockImplementationOnce(() => {});
+    const res = await get("abc123.png");
+    expect(res.status).toBe(503);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("location")).toBeNull();
+    expect(store.getCurrentAvatar).not.toHaveBeenCalled();
   });
 
   it("404s an unsupported extension", async () => {

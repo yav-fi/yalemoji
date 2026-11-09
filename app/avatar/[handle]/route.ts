@@ -1,32 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkAvatarReadRateLimit, getCurrentAvatar } from "@/lib/avatar-store";
+import { getCurrentAvatar } from "@/lib/avatar-store";
 import { parseHandle } from "@/lib/avatar-handle";
-import { hashValue } from "@/lib/hash";
-import { getRequestIp } from "@/lib/request-ip";
+import { authorizeLookup, LOOKUP_CACHE_HEADERS } from "@/lib/lookup-auth";
 
 export const runtime = "nodejs";
 
-// Short cache on the default so a newly created avatar shows up soon.
-const DEFAULT_CACHE_HEADERS = { "Cache-Control": "public, max-age=300" };
+const ERROR_HEADERS = { "Cache-Control": "no-store" };
 
+// Short, private cache so a newly created avatar shows up soon.
 function defaultAvatarRedirect(request: NextRequest, ext: "svg" | "png") {
   const target = new URL(`/assets/default-avatar.${ext}`, request.nextUrl.origin);
-  return NextResponse.redirect(target, { status: 302, headers: DEFAULT_CACHE_HEADERS });
+  return NextResponse.redirect(target, { status: 302, headers: LOOKUP_CACHE_HEADERS });
 }
 
 /**
- * `<img src="/avatar/{netid}.png">` (or `.svg`) for any Yale app. Redirects to
- * the user's current avatar, or to a default image if they haven't made one,
- * so the image never breaks. Only an unsupported extension gets a 404.
+ * API-key-protected redirect for app servers. Browsers should display the
+ * opaque asset URLs returned by the JSON lookup APIs instead of this route.
+ * A missing avatar gets a default image; infrastructure failures stay errors.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ handle: string }> }
 ) {
+  const auth = await authorizeLookup(request);
+  if (!auth.ok) return auth.response;
+
   const { handle } = await params;
   const ext = handle.slice(handle.lastIndexOf(".") + 1);
   if (ext !== "svg" && ext !== "png") {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return NextResponse.json({ error: "not_found" }, { status: 404, headers: ERROR_HEADERS });
   }
 
   const parsed = parseHandle(handle.toLowerCase());
@@ -34,24 +36,12 @@ export async function GET(
     return defaultAvatarRedirect(request, ext);
   }
 
-  const salt = process.env.RATE_LIMIT_SALT;
-  if (salt) {
-    const ipHash = hashValue(getRequestIp(request.headers), salt);
-    const rateLimit = await checkAvatarReadRateLimit(ipHash);
-    if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { error: "rate_limited", retryAfterSeconds: rateLimit.retryAfterSeconds },
-        { status: 429 }
-      );
-    }
-  }
-
   let avatar;
   try {
     avatar = await getCurrentAvatar(parsed.netid);
   } catch (error) {
-    console.error("Avatar lookup failed; serving default", error);
-    return defaultAvatarRedirect(request, ext);
+    console.error("Avatar lookup failed", error);
+    return NextResponse.json({ error: "server_error" }, { status: 503, headers: ERROR_HEADERS });
   }
 
   if (!avatar) {
@@ -59,5 +49,5 @@ export async function GET(
   }
 
   const target = parsed.ext === "svg" ? avatar.svgUrl : avatar.pngUrl;
-  return NextResponse.redirect(target, { status: 302 });
+  return NextResponse.redirect(target, { status: 302, headers: LOOKUP_CACHE_HEADERS });
 }
