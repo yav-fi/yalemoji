@@ -72,7 +72,6 @@ function DownloadButton({ pendingAction, onDownload }: {
           <path d="M12 4v13m-6-6 6 6 6-6M5 21h14" />
         </svg>
         {pendingAction?.startsWith("download") ? "Downloading…" : "Download"}
-        <svg aria-hidden fill="none" height="12" viewBox="0 0 24 24" width="12"><path d="m6 9 6 6 6-6" /></svg>
       </button>
       {expanded ? (
         <div aria-label="Download options" className={styles.downloadMenu} id={dropdownId}>
@@ -629,6 +628,7 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
 
           <div className={styles.panelFooter}>
             <div className={styles.footerActions}>
+              <DownloadButton pendingAction={pendingAction} onDownload={runPngAction} />
               <button
                 aria-label="Save avatar"
                 className={`${styles.export} ${styles.saveAction}`}
@@ -642,7 +642,6 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
                 </svg>
                 {pendingAction === "save" ? "Saving…" : "Save"}
               </button>
-              <DownloadButton pendingAction={pendingAction} onDownload={runPngAction} />
             </div>
             {exportError || saveMessage ? (
               <div className={styles.footerStatus}>
