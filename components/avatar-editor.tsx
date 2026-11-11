@@ -14,7 +14,6 @@ import {
   avatarCategories,
   avatarOptions,
   categoryLabels,
-  createInitialSelections,
   facialHairOptions,
   type AccessorySelections,
   type AvatarCategory,
@@ -27,6 +26,10 @@ import {
   type AvatarPalette
 } from "@/config/avatar-palettes";
 import {
+  DEFAULT_HAIR_PALETTE,
+  DEFAULT_SKIN_PALETTE,
+  defaultConfig,
+  defaultSelections,
   missingRequiredFeatures,
   type AvatarConfig,
   type RequiredFeature
@@ -86,27 +89,6 @@ function DownloadButton({ pendingAction, onDownload }: {
     </div>
   );
 }
-
-function initialSelections(): AvatarSelections {
-  const selections = createInitialSelections();
-  selections.hair = null;
-  selections.eyes = null;
-  selections.brows = null;
-  selections.mouth = null;
-  return selections;
-}
-
-const DEFAULT_SKIN_PALETTE = skinPalettes[2];
-const DEFAULT_HAIR_PALETTE = hairPalettes[0];
-
-const defaultConfig: AvatarConfig = {
-  selections: initialSelections(),
-  accessories: {},
-  facialHairId: null,
-  skinPaletteId: DEFAULT_SKIN_PALETTE.id,
-  hairPaletteId: DEFAULT_HAIR_PALETTE.id,
-  backgroundId: defaultAvatarBackground.id
-};
 
 const requiredFeatureNames: Record<RequiredFeature, string> = {
   eyes: "eyes",
@@ -308,7 +290,7 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
   const [backgroundOption, setBackgroundOption] =
     useState<AvatarBackgroundOption>(defaultAvatarBackground);
   const [selections, setSelections] =
-    useState<AvatarSelections>(initialSelections);
+    useState<AvatarSelections>(defaultSelections);
   const [facialHairId, setFacialHairId] = useState<string | null>(null);
   const [accessories, setAccessories] = useState<AccessorySelections>({});
   const [pendingAction, setPendingAction] = useState<PngAction | null>(null);
