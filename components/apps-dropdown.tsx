@@ -59,7 +59,7 @@ export function AppsDropdown() {
             ))}
           </div>
           <p className={styles.attribution}>
-            YaleMoji is a{" "}
+            Yalemoji is a{" "}
             <a href="https://yalecomputersociety.org" rel="noopener noreferrer" target="_blank">y/cs</a>{" "}
             product
           </p>

@@ -31,6 +31,15 @@ async function cornerAlpha(png: Buffer) {
 }
 
 describe("renderAvatarAssets", () => {
+  it("renders the exact interpolated skin and hair colors rather than their nearest stops", async () => {
+    const { svg, png } = await renderAvatarAssets({ ...baseConfig(), skinColorPosition: 0.5, hairColorPosition: 0.5 });
+    expect(svg).toContain("#f9d9c4");
+    expect(svg).toContain("#f2a475");
+    expect(svg).toContain("#3d312c");
+    expect(svg).not.toContain("var(--avatar-");
+    const nearest = await renderAvatarAssets(baseConfig());
+    expect(png.equals(nearest.png)).toBe(false);
+  });
   it("renders a well-formed 512x512 subject SVG and a transparent PNG from a config", async () => {
     const { svg, png, backgroundSvg } = await renderAvatarAssets(baseConfig());
 

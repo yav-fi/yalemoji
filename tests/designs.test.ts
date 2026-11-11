@@ -76,8 +76,10 @@ describe("displayDesigns", () => {
 });
 
 describe("shared editor defaults", () => {
-  it("start without eyes and with the default skin palette", () => {
-    expect(defaultConfig.selections.eyes).toBeNull();
+  it("start with a face and the default skin palette", () => {
+    expect(defaultConfig.selections.eyes).toBe("eyes-1");
+    expect(defaultConfig.selections.mouth).toBe("mouth-1");
+    expect(defaultConfig.selections.hair).toBeNull();
     expect(defaultConfig.skinPaletteId).toBe(DEFAULT_SKIN_PALETTE.id);
   });
 });

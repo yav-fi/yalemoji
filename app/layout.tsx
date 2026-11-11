@@ -6,8 +6,8 @@ import { ThemeUrlSync } from "@/components/theme-url-sync";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "YaleMoji",
-  description: "Build your YaleMoji avatar for CourseTable."
+  title: "Yalemoji",
+  description: "Build your Yalemoji avatar for CourseTable."
 };
 
 export default function RootLayout({

@@ -1,4 +1,4 @@
-# YaleMoji avatar assets
+# Yalemoji avatar assets
 
 Put exported SVG layers in these directories:
 

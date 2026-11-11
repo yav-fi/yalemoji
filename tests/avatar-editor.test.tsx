@@ -13,14 +13,10 @@ const beachDay: { version: number; name: string; config: AvatarConfig } = {
   name: "Beach day",
   config: {
     ...defaultConfig,
-    selections: { ...defaultConfig.selections, eyes: "eyes-2", mouth: "mouth-1" }
+    // Saved before color sliders existed: no slider positions.
+    selections: { ...defaultConfig.selections, eyes: "eyes-2", mouth: "mouth-1", brows: null }
   }
 };
-
-function chooseDownload(name: string) {
-  fireEvent.click(screen.getByRole("button", { name: "Download" }));
-  fireEvent.click(screen.getByRole("button", { name }));
-}
 
 function selectEyesAndMouth() {
   fireEvent.click(screen.getByRole("tab", { name: "Eyes" }));
@@ -50,28 +46,73 @@ describe("AvatarEditor", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Hair" }));
     expect(screen.getByRole("group", { name: "Hair color" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Select color/ })).toHaveLength(13);
+    expect(screen.queryByRole("button", { name: /Select color/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Hair color" })).toBeInTheDocument();
   });
 
-  it("uses direct feature tabs and keeps export available", () => {
-    render(<AvatarEditor />);
-
-    expect(screen.getByRole("tab", { name: "Face" })).toHaveAttribute("aria-selected", "true");
+  it("blends skin and hair colors live and retains slider positions across tabs", () => {
+    const { container } = render(<AvatarEditor />);
+    const canvas = () => container.querySelector('[data-active="true"][style]') as HTMLElement;
+    const skin = screen.getByRole("slider", { name: "Skin color" });
+    fireEvent.change(skin, { target: { value: "0.5" } });
+    expect(canvas().style.getPropertyValue("--avatar-primary")).toBe("#f9d9c4");
+    expect(canvas().style.getPropertyValue("--avatar-secondary")).toBe("#f2a475");
     fireEvent.click(screen.getByRole("tab", { name: "Hair" }));
-    expect(screen.getByRole("tab", { name: "Hair" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByRole("button", { name: "Download PNG with background" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Download" }));
-    expect(
-      screen.getByRole("button", { name: "Download PNG with background" })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Download transparent PNG" })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Save avatar" })
-    ).toHaveTextContent("Save");
-    fireEvent.keyDown(document, { key: "Escape" });
-    expect(screen.queryByRole("button", { name: "Download PNG with background" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("slider", { name: "Hair color" }), { target: { value: "0.5" } });
+    expect(canvas().style.getPropertyValue("--avatar-hair-primary")).toBe("#3d312c");
+    fireEvent.click(screen.getByRole("tab", { name: "Face" }));
+    expect(screen.getByRole("slider", { name: "Skin color" })).toHaveValue("0.5");
+    fireEvent.click(screen.getByRole("tab", { name: "Hair" }));
+    expect(screen.getByRole("slider", { name: "Hair color" })).toHaveValue("0.5");
+    fireEvent.change(screen.getByRole("slider", { name: "Hair color" }), { target: { value: "5" } });
+    expect(screen.getByRole("slider", { name: "Hair color" })).toHaveValue("5");
+    expect(canvas().style.getPropertyValue("--avatar-hair-primary")).toBe("#a85433");
+  });
+
+  it.each(["finish", "next"] as const)("keeps the current tab open and spins only the clicked %s control until saving finishes", async (source) => {
+    let resolveSave!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => String(input) === "/api/avatar"
+      ? new Promise<Response>((resolve) => { resolveSave = resolve; }) : new Promise<Response>(() => {})));
+    render(<AvatarEditor />);
+    if (source === "next") fireEvent.click(screen.getByRole("tab", { name: "Background" }));
+    const initialTab = source === "next" ? "Background" : "Face";
+    const trigger = source === "next" ? screen.getByRole("button", { name: "Next" }) : screen.getByRole("tab", { name: "Finish" });
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-busy", "true");
+    expect(within(trigger).getByRole("status", { name: "Saving your Yalemoji" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: initialTab })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Finish" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.queryByRole("link", { name: "Done" })).not.toBeInTheDocument();
+    await act(async () => { resolveSave(new Response(JSON.stringify({ version: 1 }), { status: 200 })); });
+    expect(screen.getByRole("heading", { name: "Your Yalemoji has been set!" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download PNG with background" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download transparent PNG" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Done" })).toHaveAttribute("href", "https://yalemoji.com");
+    expect(screen.getByRole("tab", { name: "Finish" })).toHaveAttribute("aria-busy", "false");
+    expect(screen.getByRole("tab", { name: "Finish" }).querySelector("svg")).toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "Saving your Yalemoji" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("button", { name: "Next" })).toHaveTextContent("Next");
+  });
+
+  it("navigates every step with Next and Back and saves when Next reaches the final step", async () => {
+    localStorage.clear();
+    render(<AvatarEditor localPreview />);
+    expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
+    for (const label of ["Eyes", "Eyebrows", "Mouth", "Hair", "Accessories", "Background"]) {
+      fireEvent.click(screen.getByRole("button", { name: "Next" }));
+      expect(screen.getByRole("tab", { name: label })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+    }
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Next" })); });
+    expect(screen.getByRole("tab", { name: "Finish" })).toHaveAttribute("aria-selected", "true");
+    await screen.findByRole("heading", { name: "Your Yalemoji has been set!" });
+    expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("tab", { name: "Background" })).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("tab", { name: "Accessories" })).toHaveAttribute("aria-selected", "true");
+    localStorage.clear();
   });
 
   it("starts with the selected face and fixed nose, then toggles features", () => {
@@ -79,9 +120,10 @@ describe("AvatarEditor", () => {
 
     expect(container.querySelector('[data-active="true"]')).toBeInTheDocument();
     expect(container.querySelector('[data-avatar-layer="nose"]')).toBeInTheDocument();
-    expect(container.querySelector('[data-category="brows"]')).not.toBeInTheDocument();
+    expect(container.querySelector('[data-category="brows"]')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Eyebrows" }));
+    expect(screen.getByRole("button", { name: "Select Eyebrows 6" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 1" }));
     expect(container.querySelector('[data-category="brows"]')).toBeInTheDocument();
 
@@ -183,40 +225,32 @@ describe("AvatarEditor", () => {
     expect(normalized).toContain('stroke="var(--avatar-secondary)"');
   });
 
-  it("shows Saved on the button for three seconds without displaying the version", async () => {
-    vi.useFakeTimers();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-        if (String(input) === "/api/avatar") {
-          expect(init?.method).toBe("POST");
-          const body = JSON.parse(String(init?.body));
-          expect(body).toHaveProperty("selections");
-          expect(body).toHaveProperty("skinPaletteId");
-          expect(body).toHaveProperty("backgroundId");
-          return Promise.resolve(
-            new Response(JSON.stringify({ version: 3, pngUrl: "x", svgUrl: "y" }), {
-              status: 200
-            })
-          );
-        }
-        return new Promise<Response>(() => {});
-      })
-    );
-
+  it("automatically saves and sets the exact design on entry, without saving it twice", async () => {
+    const requests: Record<string, unknown>[] = [];
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/avatar") {
+        requests.push(JSON.parse(String(init?.body)));
+        return Promise.resolve(new Response(JSON.stringify({ version: requests.length }), { status: 200 }));
+      }
+      return new Promise<Response>(() => {});
+    }));
     render(<AvatarEditor />);
-    selectEyesAndMouth();
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
-      await vi.advanceTimersByTimeAsync(0);
-    });
-    expect(screen.getByRole("button", { name: "Saved" })).toHaveTextContent("Saved");
-    expect(screen.queryByText(/v3/)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("slider", { name: "Skin color" }), { target: { value: "0.51" } });
+    await act(async () => { fireEvent.click(screen.getByRole("tab", { name: "Finish" })); });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ setAsCurrent: true, skinColorPosition: 0.51 });
+    await screen.findByRole("heading", { name: "Your Yalemoji has been set!" });
     expect(refresh).toHaveBeenCalledOnce();
-    await act(() => vi.advanceTimersByTimeAsync(2999));
-    expect(screen.getByRole("button", { name: "Saved" })).toBeInTheDocument();
-    await act(() => vi.advanceTimersByTimeAsync(1));
-    expect(screen.getByRole("button", { name: "Save avatar" })).toHaveTextContent("Save");
+    fireEvent.click(screen.getByRole("tab", { name: "Face" }));
+    await act(async () => { fireEvent.click(screen.getByRole("tab", { name: "Finish" })); });
+    expect(requests).toHaveLength(1);
+    fireEvent.click(screen.getByRole("tab", { name: "Face" }));
+    fireEvent.change(screen.getByRole("slider", { name: "Skin color" }), { target: { value: "0.75" } });
+    await act(async () => { fireEvent.click(screen.getByRole("tab", { name: "Finish" })); });
+    await screen.findByRole("heading", { name: "Your Yalemoji has been set!" });
+    expect(requests).toHaveLength(2);
+    expect(requests[1]).toMatchObject({ setAsCurrent: true, skinColorPosition: 0.75 });
+    expect(refresh).toHaveBeenCalledTimes(2);
   });
 
   it("shows a friendly message when saving is rate limited", async () => {
@@ -236,32 +270,47 @@ describe("AvatarEditor", () => {
 
     render(<AvatarEditor />);
     selectEyesAndMouth();
-    fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Finish" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("2 minute(s)");
     expect(refresh).not.toHaveBeenCalled();
   });
 
-  it("blocks saving and downloading until the avatar has eyes and a mouth", () => {
-    const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
-    vi.stubGlobal("fetch", fetchMock);
-    render(<AvatarEditor />);
-    fetchMock.mockClear();
+  it("starts with basic eyes and mouth, keeps them selected, and allows replacements", () => {
+    const { container } = render(<AvatarEditor />);
+    expect(container.querySelector('[data-category="eyes"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-category="mouth"]')).toBeInTheDocument();
+    for (const label of ["Eyes", "Mouth"]) {
+      fireEvent.click(screen.getByRole("tab", { name: label }));
+      const first = screen.getByRole("button", { name: `Select ${label} 1` });
+      expect(first).toHaveAttribute("aria-pressed", "true");
+      fireEvent.click(first);
+      expect(first).toHaveAttribute("aria-pressed", "true");
+      const second = screen.getByRole("button", { name: `Select ${label} 2` });
+      fireEvent.click(second);
+      fireEvent.click(second);
+      expect(second).toHaveAttribute("aria-pressed", "true");
+      expect(first).toHaveAttribute("aria-pressed", "false");
+    }
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Add eyes and a mouth before saving."
-    );
-
-    fireEvent.click(screen.getByRole("tab", { name: "Eyes" }));
-    fireEvent.click(screen.getByRole("button", { name: "Select Eyes 1" }));
-    chooseDownload("Download PNG with background");
-    expect(screen.getByRole("alert")).toHaveTextContent("Add a mouth before downloading.");
-
-    chooseDownload("Download transparent PNG");
-    expect(screen.getByRole("alert")).toHaveTextContent("Add a mouth before downloading.");
-
-    expect(fetchMock).not.toHaveBeenCalledWith("/api/avatar", expect.anything());
+  it("fills in missing eyes and mouth when restoring an older draft", () => {
+    localStorage.clear();
+    const first = render(<AvatarEditor netid="old-draft" />);
+    fireEvent.click(screen.getByRole("tab", { name: "Hair" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select Hair 1" }));
+    first.unmount();
+    const key = "yalemoji:draft:v1:old-draft";
+    const draft = JSON.parse(localStorage.getItem(key)!);
+    draft.config.selections.eyes = null;
+    draft.config.selections.mouth = null;
+    localStorage.setItem(key, JSON.stringify(draft));
+    const restored = render(<AvatarEditor netid="old-draft" />);
+    expect(restored.container.querySelector('[data-category="eyes"]')).toBeInTheDocument();
+    expect(restored.container.querySelector('[data-category="mouth"]')).toBeInTheDocument();
+    expect(restored.container.querySelector('[data-avatar-layer="hair-front"]')).toBeInTheDocument();
+    restored.unmount();
+    localStorage.clear();
   });
 
   it("shows the server's message when it rejects an incomplete avatar", async () => {
@@ -280,7 +329,7 @@ describe("AvatarEditor", () => {
 
     render(<AvatarEditor />);
     selectEyesAndMouth();
-    fireEvent.click(screen.getByRole("button", { name: "Save avatar" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Finish" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Add a mouth before saving."
@@ -308,7 +357,29 @@ describe("AvatarEditor", () => {
     first.unmount();
 
     const { container } = render(<AvatarEditor netid="xyz789" />);
-    expect(container.querySelector('[data-category="brows"]')).not.toBeInTheDocument();
+    expect(container.querySelector('[data-category="brows"]')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Eyebrows" }));
+    expect(screen.getByRole("button", { name: "Select Eyebrows 6" })).toHaveAttribute("aria-pressed", "true");
+    localStorage.clear();
+  });
+
+  it("saves a local preview on this device without calling the avatar API", async () => {
+    localStorage.clear();
+    const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+    vi.stubGlobal("fetch", fetchMock);
+    const first = render(<AvatarEditor localPreview />);
+    selectEyesAndMouth();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("tab", { name: "Finish" }));
+    });
+    await screen.findByRole("heading", { name: "Your Yalemoji has been set!" });
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/avatar", expect.anything());
+    expect(refresh).not.toHaveBeenCalled();
+    first.unmount();
+    const second = render(<AvatarEditor localPreview />);
+    expect(second.container.querySelector('[data-category="eyes"]')).toBeInTheDocument();
+    expect(second.container.querySelector('[data-category="mouth"]')).toBeInTheDocument();
+    second.unmount();
     localStorage.clear();
   });
 
@@ -330,11 +401,16 @@ describe("AvatarEditor", () => {
     });
 
     it("shows the design and only clears the address on the first edit", () => {
+      writeDraft("abc123", { ...defaultConfig, selections: { ...defaultConfig.selections, hair: "hair-1" } });
       const { container } = render(<AvatarEditor initialDesign={beachDay} netid="abc123" />);
+      // Opening isn't an edit: the stored draft is untouched until one.
+      act(() => void 0);
+      expect(JSON.parse(localStorage.getItem("yalemoji:draft:v1:abc123")!).config.selections.hair).toBe("hair-1");
 
       expect(container.querySelector('[data-category="eyes"]')).toBeInTheDocument();
       expect(screen.getByRole("status")).toHaveTextContent("Opened 'Beach day'");
-      expect(screen.queryByRole("button", { name: "Bring back previous edits" })).not.toBeInTheDocument();
+      // The different stored draft was backed up, so it's offered back.
+      expect(screen.getByRole("button", { name: "Bring back previous edits" })).toBeInTheDocument();
       expect(replaceState).not.toHaveBeenCalled();
 
       fireEvent.click(screen.getByRole("tab", { name: "Eyebrows" }));
@@ -361,7 +437,6 @@ describe("AvatarEditor", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Bring back previous edits" }));
       expect(container.querySelector('[data-category="brows"]')).toBeInTheDocument();
-      expect(container.querySelector('[data-category="eyes"]')).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Bring back previous edits" })
       ).not.toBeInTheDocument();

@@ -50,20 +50,20 @@ describe("CreateExperience", () => {
     const { container } = render(<CreateExperience />);
     await act(() => vi.advanceTimersByTimeAsync(9999));
     expect(container.querySelector('main[data-phase="ready"]')).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Introducing YaleMoji" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Introducing Yalemoji" })).not.toBeInTheDocument();
     await act(() => vi.advanceTimersByTimeAsync(1));
     expect(container.querySelector('main[data-phase="blurring"]')).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Introducing YaleMoji" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Introducing Yalemoji" })).not.toBeInTheDocument();
     expect(screen.getByTestId("preview")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Your Yale apps" }).querySelectorAll("img")).toHaveLength(8);
     expect(screen.getByRole("link", { name: "Create now" })).toHaveAttribute("href", "/editor");
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     await act(() => vi.advanceTimersByTimeAsync(999));
-    expect(screen.queryByRole("heading", { name: "Introducing YaleMoji" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Introducing Yalemoji" })).not.toBeInTheDocument();
     await act(() => vi.advanceTimersByTimeAsync(1));
     expect(container.querySelector('main[data-phase="revealed"]')).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Introducing YaleMoji" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "YaleMoji" })).toHaveAttribute("src", "/assets/yalemoji.svg");
+    expect(screen.getByRole("heading", { name: "Introducing Yalemoji" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Yalemoji" })).toHaveAttribute("src", "/assets/yalemoji.svg");
     expect(screen.getByTestId("preview")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Your Yale apps" }).querySelectorAll("img")).toHaveLength(8);
     const canvas = vi.mocked(AvatarCanvas);
@@ -71,14 +71,14 @@ describe("CreateExperience", () => {
     await act(() => vi.advanceTimersByTimeAsync(150));
     expect(canvas.mock.calls.length).toBeGreaterThan(calls);
     await act(() => vi.advanceTimersByTimeAsync(2349));
-    expect(screen.getByRole("heading", { name: "Introducing YaleMoji" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Introducing Yalemoji" })).toBeInTheDocument();
     expect(screen.getByTestId("preview")).toBeInTheDocument();
     await act(() => vi.advanceTimersByTimeAsync(1));
     expect(container.querySelector('main[data-phase="finished"]')).toBeInTheDocument();
     expect(screen.queryByTestId("preview")).not.toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Your Yale apps" })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Introducing YaleMoji" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "YaleMoji" })).toHaveAttribute("src", "/assets/yalemoji.svg");
+    expect(screen.getByRole("heading", { name: "Introducing Yalemoji" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Yalemoji" })).toHaveAttribute("src", "/assets/yalemoji.svg");
     const finalCalls = canvas.mock.calls.length;
     await act(() => vi.advanceTimersByTimeAsync(1000));
     expect(canvas.mock.calls.length).toBe(finalCalls);
@@ -96,7 +96,7 @@ describe("CreateExperience", () => {
     expect(updated.selections.hair).not.toEqual(initial.selections.hair);
     expect(updated.selections.eyes).not.toEqual(initial.selections.eyes);
     expect(updated.hairPalette.id).not.toEqual(initial.hairPalette.id);
-    expect(screen.getByRole("img", { name: "A YaleMoji cycling through different looks" })).not.toHaveAttribute("style");
+    expect(screen.getByRole("img", { name: "A Yalemoji cycling through different looks" })).not.toHaveAttribute("style");
   });
 
   it("avoids rapid changes for reduced motion", async () => {

@@ -52,7 +52,9 @@ export function serializeAvatarConfig(config: AvatarConfig): string {
     facialHairId: config.facialHairId,
     skinPaletteId: config.skinPaletteId,
     hairPaletteId: config.hairPaletteId,
-    backgroundId: config.backgroundId
+    backgroundId: config.backgroundId,
+    ...(config.skinColorPosition !== undefined ? { skinColorPosition: config.skinColorPosition } : {}),
+    ...(config.hairColorPosition !== undefined ? { hairColorPosition: config.hairColorPosition } : {})
   });
 }
 

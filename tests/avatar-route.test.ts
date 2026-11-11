@@ -79,6 +79,19 @@ describe("POST /api/avatar", () => {
 
     expect(response.status).toBe(200);
     expect(reserveNextVersion).toHaveBeenCalledWith("abc123");
+    expect(commitAvatarVersion).toHaveBeenCalledWith("abc123", 1, expect.objectContaining({ setAsCurrent: true }));
+  });
+
+  it("generates and uploads a design without setting it as current", async () => {
+    vi.mocked(renderAvatarAssets).mockResolvedValue({ svg: "<svg/>", png: Buffer.from(""), backgroundSvg: "<svg/>" });
+    vi.mocked(uploadAvatarAssets).mockResolvedValue({ svgUrl: "s", pngUrl: "p", backgroundUrl: "b" });
+    const request = saveRequest({ ...createInitialSelections(), eyes: "eyes-1", mouth: "mouth-1" });
+    const config = { ...await request.json(), skinColorPosition: 0.51, hairColorPosition: 5.25, setAsCurrent: false };
+    const response = await POST(new NextRequest("http://localhost/api/avatar", { method: "POST", body: JSON.stringify(config) }));
+    expect(response.status).toBe(200);
+    expect(renderAvatarAssets).toHaveBeenCalledWith(expect.objectContaining({ skinColorPosition: 0.51, hairColorPosition: 5.25 }));
+    expect(uploadAvatarAssets).toHaveBeenCalledOnce();
+    expect(commitAvatarVersion).toHaveBeenCalledWith("abc123", 1, expect.objectContaining({ setAsCurrent: false }));
   });
 
   it("names a new save from the number of existing designs", async () => {

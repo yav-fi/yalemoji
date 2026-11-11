@@ -1,6 +1,6 @@
-# YaleMoji
+# Yalemoji
 
-A one-page YaleMoji waitlist app built with Next.js, React, TypeScript, and a Google Cloud backend.
+A one-page Yalemoji waitlist app built with Next.js, React, TypeScript, and a Google Cloud backend.
 
 ## Stack
 
@@ -17,6 +17,12 @@ npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+To test the editor without CAS on your own device, put `YALEMOJI_LOCAL_EDITOR=1`
+in `.env.development.local` (already gitignored), then open `/editor` through
+`localhost` or a loopback address. This works only with `npm run dev`; preview
+saves stay in browser storage and do not update an account. Remove the setting
+to restore the normal login flow. Use `npm run dev -- --port 3001` for port 3001.
 
 The waitlist API requires Google Cloud credentials and:
 
@@ -124,7 +130,7 @@ npm run api-keys -- list
 npm run api-keys -- revoke <keyId>   # stops working within ~1 minute
 ```
 
-YaleMoji never re-serves the image bytes itself — consumers load the returned URLs directly from Cloud Storage/CDN.
+Yalemoji never re-serves the image bytes itself — consumers load the returned URLs directly from Cloud Storage/CDN.
 
 ### One-time bucket setup
 
@@ -154,7 +160,7 @@ The rule only matches objects that have a `customTime`, which the app sets when 
 
 This repo is configured to work with the Google Cloud project `yalemoji`:
 
-- Display name: `YaleMoji`
+- Display name: `Yalemoji`
 - Project number: `957172655899`
 - Firestore database: `(default)`
 - Firestore location: `nam5`

@@ -35,6 +35,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_config" }, { status: 400 });
   }
 
+  const setAsCurrent = (body as { setAsCurrent?: unknown } | null)?.setAsCurrent;
+  if (setAsCurrent !== undefined && typeof setAsCurrent !== "boolean") {
+    return NextResponse.json({ error: "invalid_config" }, { status: 400 });
+  }
   const config = validateAvatarConfig(body);
   if (!config) {
     return NextResponse.json({ error: "invalid_config" }, { status: 400 });
@@ -65,6 +69,7 @@ export async function POST(request: NextRequest) {
 
     await commitAvatarVersion(user.netid, version, {
       avatarId,
+      setAsCurrent: setAsCurrent !== false,
       config,
       pngUrl,
       svgUrl,

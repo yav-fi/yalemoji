@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   avatarBackgroundOptions,
@@ -14,6 +14,7 @@ import {
   avatarCategories,
   avatarOptions,
   categoryLabels,
+  createInitialSelections,
   facialHairOptions,
   type AccessorySelections,
   type AvatarCategory,
@@ -26,8 +27,6 @@ import {
   type AvatarPalette
 } from "@/config/avatar-palettes";
 import {
-  DEFAULT_HAIR_PALETTE,
-  DEFAULT_SKIN_PALETTE,
   defaultConfig,
   missingRequiredFeatures,
   type AvatarConfig,
@@ -37,7 +36,8 @@ import {
   clearDraftBackup,
   readDraftBackup,
   serializeAvatarConfig,
-  useAvatarDraft
+  useAvatarDraft,
+  writeDraft
 } from "@/lib/avatar-draft";
 import {
   findOpaquePixelBounds,
@@ -49,49 +49,37 @@ import {
   createAvatarLayers
 } from "./avatar-canvas";
 import { loadAvatarSvg } from "./avatar-layer";
+import { PaletteSlider } from "./palette-slider";
+import { hairSliderPalettes, interpolatePalette } from "@/lib/avatar-colors";
+import { AvatarCategoryIcon } from "./avatar-category-icon";
 import { AvatarOptionGrid } from "./avatar-option-grid";
-import { useDropdown } from "./use-dropdown";
 import styles from "./avatar-editor.module.css";
 
 const EXPORT_SIZE = 1080;
 const EXPORT_AVATAR_SIZE = 900;
 type PngAction = "download-background" | "download-transparent" | "save";
 
-function DownloadButton({ pendingAction, onDownload }: {
-  pendingAction: PngAction | null;
-  onDownload: (action: "download-background" | "download-transparent") => Promise<void>;
-}) {
-  const { closeDropdown, closing, open, toggleDropdown, wrapperRef } = useDropdown();
-  const dropdownId = useId();
-  const expanded = open && !closing;
-
-  return (
-    <div className={styles.downloadWrapper} ref={wrapperRef}>
-      <button
-        aria-controls={expanded ? dropdownId : undefined}
-        aria-expanded={expanded}
-        className={`${styles.export} ${styles.secondaryAction}`}
-        disabled={pendingAction !== null}
-        onClick={toggleDropdown}
-        type="button"
-      >
-        <svg aria-hidden fill="none" height="18" viewBox="0 0 24 24" width="18">
-          <path d="M12 4v13m-6-6 6 6 6-6M5 21h14" />
-        </svg>
-        {pendingAction?.startsWith("download") ? "Downloading…" : "Download"}
-      </button>
-      {expanded ? (
-        <div aria-label="Download options" className={styles.downloadMenu} id={dropdownId}>
-          <button onClick={() => { closeDropdown(); void onDownload("download-background"); }} type="button">
-            Download PNG with background
-          </button>
-          <button onClick={() => { closeDropdown(); void onDownload("download-transparent"); }} type="button">
-            Download transparent PNG
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
+// The one place a config becomes the editor's state, used for both the
+// starting state and applyConfig. Eyes and a mouth are always filled in.
+function configToState(config: AvatarConfig) {
+  return {
+    selections: {
+      ...config.selections,
+      eyes: config.selections.eyes ?? avatarOptions.eyes[0].id,
+      mouth: config.selections.mouth ?? avatarOptions.mouth[0].id
+    },
+    accessories: config.accessories,
+    facialHairId: config.facialHairId,
+    skinPosition:
+      config.skinColorPosition ??
+      Math.max(0, skinPalettes.findIndex((palette) => palette.id === config.skinPaletteId)),
+    hairPosition:
+      config.hairColorPosition ??
+      Math.max(0, hairSliderPalettes.findIndex((palette) => palette.id === config.hairPaletteId)),
+    backgroundOption:
+      avatarBackgroundOptions.find((option) => option.id === config.backgroundId) ??
+      defaultAvatarBackground
+  };
 }
 
 const requiredFeatureNames: Record<RequiredFeature, string> = {
@@ -101,7 +89,7 @@ const requiredFeatureNames: Record<RequiredFeature, string> = {
 
 function missingFeaturesMessage(missing: readonly RequiredFeature[], action: PngAction) {
   const names = missing.map((feature) => requiredFeatureNames[feature] ?? feature).join(" and ");
-  return `Add ${names} before ${action === "save" ? "saving" : "downloading"}.`;
+  return `Add ${names} before ${action.startsWith("save") ? "saving" : "downloading"}.`;
 }
 
 function SectionHeading({
@@ -119,34 +107,6 @@ function SectionHeading({
           Clear
         </button>
       ) : null}
-    </div>
-  );
-}
-
-function PalettePicker({
-  label,
-  onSelect,
-  options,
-  selected
-}: {
-  label: string;
-  onSelect: (palette: AvatarPalette) => void;
-  options: readonly AvatarPalette[];
-  selected: AvatarPalette;
-}) {
-  return (
-    <div aria-label={`${label} color`} className={styles.swatches} role="group">
-      {options.map((palette) => (
-        <button
-          aria-label={`Select color ${palette.id}`}
-          aria-pressed={selected.id === palette.id}
-          className={styles.swatch}
-          key={palette.id}
-          onClick={() => onSelect(palette)}
-          style={{ backgroundColor: palette.primary }}
-          type="button"
-        />
-      ))}
     </div>
   );
 }
@@ -198,7 +158,7 @@ async function renderAvatarPng({
 
   await new Promise<void>((resolve, reject) => {
     image.onload = () => resolve();
-    image.onerror = () => reject(new Error("Could not render the YaleMoji."));
+    image.onerror = () => reject(new Error("Could not render the Yalemoji."));
     image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   });
 
@@ -232,7 +192,7 @@ async function renderAvatarPng({
       EXPORT_SIZE,
       EXPORT_SIZE
     );
-    if (!sourceBounds) throw new Error("The YaleMoji has no visible artwork.");
+    if (!sourceBounds) throw new Error("The Yalemoji has no visible artwork.");
 
     const destination = fitBoundsInsideSquare(
       sourceBounds,
@@ -286,43 +246,28 @@ function isRateLimitBody(body: unknown): body is { retryAfterSeconds: number } {
   );
 }
 
-// The one place config ids are turned into the editor's palette and background
-// objects, used for both the starting state and applyConfig.
-function configToState(config: AvatarConfig) {
-  return {
-    selections: config.selections,
-    accessories: config.accessories,
-    facialHairId: config.facialHairId,
-    skinPalette:
-      skinPalettes.find((palette) => palette.id === config.skinPaletteId) ?? DEFAULT_SKIN_PALETTE,
-    hairPalette:
-      hairPalettes.find((palette) => palette.id === config.hairPaletteId) ?? DEFAULT_HAIR_PALETTE,
-    backgroundOption:
-      avatarBackgroundOptions.find((option) => option.id === config.backgroundId) ??
-      defaultAvatarBackground
-  };
-}
-
 export function AvatarEditor({
   netid,
+  localPreview = false,
   initialDesign,
   designNotFound
 }: {
   netid?: string | null;
+  localPreview?: boolean;
   initialDesign?: { version: number; name: string; config: AvatarConfig };
   designNotFound?: boolean;
 } = {}) {
   const router = useRouter();
-  const [initialState] = useState(() =>
-    configToState(initialDesign?.config ?? defaultConfig)
-  );
-  const [category, setCategory] = useState<AvatarCategory>("face");
-  const [skinPalette, setSkinPalette] = useState<AvatarPalette>(initialState.skinPalette);
-  const [hairPalette, setHairPalette] = useState<AvatarPalette>(initialState.hairPalette);
+  const panelBodyRef = useRef<HTMLDivElement>(null);
+  const [initialState] = useState(() => configToState(initialDesign?.config ?? defaultConfig));
+  const [category, setCategory] = useState<AvatarCategory | "finish">("face");
+  const [skinPosition, setSkinPosition] = useState(initialState.skinPosition);
+  const [hairPosition, setHairPosition] = useState(initialState.hairPosition);
+  const skinPalette = useMemo(() => interpolatePalette(skinPalettes, skinPosition), [skinPosition]);
+  const hairPalette = useMemo(() => interpolatePalette(hairSliderPalettes, hairPosition), [hairPosition]);
   const [backgroundOption, setBackgroundOption] =
     useState<AvatarBackgroundOption>(initialState.backgroundOption);
-  const [selections, setSelections] =
-    useState<AvatarSelections>(initialState.selections);
+  const [selections, setSelections] = useState<AvatarSelections>(initialState.selections);
   const [facialHairId, setFacialHairId] = useState<string | null>(initialState.facialHairId);
   const [accessories, setAccessories] = useState<AccessorySelections>(initialState.accessories);
   // Captured on the first render so it survives the address being cleared.
@@ -336,24 +281,23 @@ export function AvatarEditor({
   const [backup, setBackup] = useState<AvatarConfig | null>(null);
   const [pendingAction, setPendingAction] = useState<PngAction | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    if (!saved) return;
-    const timer = window.setTimeout(() => setSaved(false), 3000);
-    return () => window.clearTimeout(timer);
-  }, [saved]);
+  const [created, setCreated] = useState(false);
+  const [savingControl, setSavingControl] = useState<"finish" | "next" | null>(null);
+  const actionInFlight = useRef(false);
+  const savedDesignConfig = useRef<string | null>(null);
 
   const config = useMemo<AvatarConfig>(
     () => ({
       selections,
       accessories,
       facialHairId,
+      skinColorPosition: skinPosition,
+      hairColorPosition: hairPosition,
       skinPaletteId: skinPalette.id,
       hairPaletteId: hairPalette.id,
       backgroundId: backgroundOption.id
     }),
-    [selections, accessories, facialHairId, skinPalette, hairPalette, backgroundOption]
+    [selections, accessories, facialHairId, skinPalette, hairPalette, skinPosition, hairPosition, backgroundOption]
   );
 
   function applyConfig(next: AvatarConfig) {
@@ -361,31 +305,36 @@ export function AvatarEditor({
     setSelections(state.selections);
     setAccessories(state.accessories);
     setFacialHairId(state.facialHairId);
-    setSkinPalette(state.skinPalette);
-    setHairPalette(state.hairPalette);
+    setSkinPosition(state.skinPosition);
+    setHairPosition(state.hairPosition);
     setBackgroundOption(state.backgroundOption);
     setExportError(null);
-    setSaved(false);
+    setCreated(false);
   }
 
+  // The opened design as the editor holds it (with slider positions filled
+  // in), so "unchanged" compares like with like.
+  const openedConfig = useRef(initialDesign ? config : undefined);
+
+  const draftOwner = localPreview ? "local-editor-preview" : netid;
   useAvatarDraft({
     config,
     defaults: defaultConfig,
-    netid,
+    netid: draftOwner,
     onRestore: applyConfig,
-    initial: initialDesign?.config
+    initial: openedConfig.current
   });
 
   // Declared after the draft hook, whose mount effect writes the backup.
   useEffect(() => {
-    if (initialDesign && netid) setBackup(readDraftBackup(netid, defaultConfig));
-    // Mount only: the editor is re-keyed when the opened design changes.
+    if (initialDesign && draftOwner) setBackup(readDraftBackup(draftOwner, defaultConfig));
+    // Mount only: the opened design is fixed for this editor's lifetime.
   }, []);
 
   function restoreBackup() {
     if (!backup) return;
     applyConfig(backup);
-    if (netid) clearDraftBackup(netid);
+    if (draftOwner) clearDraftBackup(draftOwner);
     setBackup(null);
     setNotice("Brought back your previous edits");
   }
@@ -394,7 +343,7 @@ export function AvatarEditor({
   // A design that wasn't found has nothing to reopen, so clear it right away.
   const addressCleared = useRef(false);
   const openedSerialized = useRef(
-    initialDesign ? serializeAvatarConfig(initialDesign.config) : null
+    openedConfig.current ? serializeAvatarConfig(openedConfig.current) : null
   );
   const serializedConfig = serializeAvatarConfig(config);
   useEffect(() => {
@@ -411,17 +360,31 @@ export function AvatarEditor({
   }, [serializedConfig, designNotFound]);
 
   const selectedPalette = category === "hair" ? hairPalette : skinPalette;
-  const options = avatarOptions[category];
+  const options = category === "finish" ? [] : avatarOptions[category];
   const canvasStyle = useMemo(
     () => ({ background: backgroundOption.background }),
     [backgroundOption]
   );
 
+  function goToStep(step: AvatarCategory | "finish", control: "finish" | "next" = "finish") {
+    if (actionInFlight.current) return;
+    if (step === "finish" && savedDesignConfig.current !== JSON.stringify(config)) {
+      setSavingControl(control);
+      void runPngAction("save");
+      return;
+    }
+    setCategory(step);
+    if (panelBodyRef.current) panelBodyRef.current.scrollTop = 0;
+  }
+
+  const stepIndex = category === "finish" ? avatarCategories.length : avatarCategories.indexOf(category);
+
   function selectOption(option: AvatarOption) {
+    if (category === "finish") return;
     setSelections((current) => ({
       ...current,
       [category]:
-        category !== "face" && current[category] === option.id
+        !["face", "eyes", "mouth"].includes(category) && current[category] === option.id
           ? null
           : option.id
     }));
@@ -437,10 +400,14 @@ export function AvatarEditor({
   }
 
   async function saveAvatar() {
+    if (localPreview) {
+      if (!writeDraft("local-editor-preview", config)) throw new Error("Could not save on this device. Browser storage is unavailable.");
+      return;
+    }
     const response = await fetch("/api/avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(config)
+      body: JSON.stringify({ ...config, setAsCurrent: true })
     });
 
     const body: unknown = await response.json().catch(() => null);
@@ -456,27 +423,34 @@ export function AvatarEditor({
           )} minute(s).`
         );
       }
-      throw new Error("Your YaleMoji could not be saved.");
+      throw new Error("Your Yalemoji could not be saved.");
     }
 
-    setSaved(true);
-    router.refresh();
+
   }
 
   async function runPngAction(action: PngAction) {
-    if (pendingAction) return;
+    if (actionInFlight.current) return;
+    actionInFlight.current = true;
     setPendingAction(action);
     setExportError(null);
-    if (action === "save") setSaved(false);
+    if (action === "save") setCreated(false);
     const missing = missingRequiredFeatures(config);
     if (missing.length > 0) {
       setExportError(missingFeaturesMessage(missing, action));
       setPendingAction(null);
+      actionInFlight.current = false;
+      setSavingControl(null);
       return;
     }
     try {
       if (action === "save") {
         await saveAvatar();
+        savedDesignConfig.current = JSON.stringify(config);
+        setCreated(true);
+        setCategory("finish");
+        if (panelBodyRef.current) panelBodyRef.current.scrollTop = 0;
+        if (!localPreview) router.refresh();
       } else {
         const blob = await renderAvatarPng({
           accessories,
@@ -499,6 +473,8 @@ export function AvatarEditor({
         error instanceof Error ? error.message : "The PNG could not be created."
       );
     } finally {
+      setSavingControl(null);
+      actionInFlight.current = false;
       setPendingAction(null);
     }
   }
@@ -506,14 +482,28 @@ export function AvatarEditor({
   return (
     <section className={styles.page} aria-labelledby="editor-title">
       <h1 className={styles.srOnly} id="editor-title">
-        YaleMoji editor
+        Yalemoji editor
       </h1>
       <div aria-hidden className={styles.campus} />
+      {localPreview && <p className={styles.previewNotice} role="status">Local editor preview · Saves stay on this device</p>}
+      {notice ? (
+        <p className={styles.previewNotice} role="status">
+          {notice}
+          {backup ? (
+            <>
+              {" · "}
+              <button className={styles.noticeAction} onClick={restoreBackup} type="button">
+                Bring back previous edits
+              </button>
+            </>
+          ) : null}
+        </p>
+      ) : null}
 
       <div className={styles.workspace}>
         <div className={styles.previewColumn}>
           <div
-            aria-label="Preview of your YaleMoji"
+            aria-label="Preview of your Yalemoji"
             className={styles.canvasCard}
             role="img"
             style={canvasStyle}
@@ -537,32 +527,57 @@ export function AvatarEditor({
           </div>
         </div>
 
-        <aside className={styles.panel} aria-label="YaleMoji customization">
+        <aside className={styles.panel} aria-label="Yalemoji customization">
           <div aria-label="Avatar feature" className={styles.tabs} role="tablist">
             {avatarCategories.map((item) => (
               <button
+                disabled={pendingAction !== null}
+                aria-label={categoryLabels[item]}
                 aria-selected={category === item}
                 className={styles.tab}
                 data-active={category === item}
                 key={item}
-                onClick={() => setCategory(item)}
+                onClick={() => goToStep(item)}
                 role="tab"
                 type="button"
               >
-                <span aria-hidden>{categoryLabels[item]}</span>
-                {categoryLabels[item]}
+                <AvatarCategoryIcon category={item} />
+                <span className={styles.tabLabel}>{categoryLabels[item]}</span>
               </button>
             ))}
+            <button disabled={pendingAction !== null} aria-label="Finish" aria-busy={savingControl === "finish"} aria-selected={category === "finish"} role="tab" type="button"
+              className={`${styles.tab} ${styles.finishTab}`} data-active={category === "finish"}
+              onClick={() => goToStep("finish")}>
+              {savingControl === "finish" ? <span className={styles.buttonSpinner} role="status" aria-label="Saving your Yalemoji" /> : (
+              <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none">
+                <path d="m5 12 4 4L19 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              )}
+            </button>
           </div>
 
-          <div className={styles.panelBody}>
+          <div className={styles.panelBody} ref={panelBodyRef} inert={pendingAction === "save"} aria-busy={pendingAction === "save"}>
+            {category === "finish" && (
+              <div className={styles.finishPanel} aria-busy={pendingAction === "save"}>
+                {created && (
+                  <>
+                    <h2 aria-live="polite">Your Yalemoji has been set!</h2>
+                    <button className={`${styles.export} ${styles.secondaryAction}`} type="button" disabled={pendingAction !== null}
+                      onClick={() => void runPngAction("download-background")}>Download PNG with background</button>
+                    <button className={`${styles.export} ${styles.secondaryAction}`} type="button" disabled={pendingAction !== null}
+                      onClick={() => void runPngAction("download-transparent")}>Download transparent PNG</button>
+                    <a className={`${styles.export} ${styles.saveAction} ${styles.done}`} href="https://yalemoji.com">Done</a>
+                  </>
+                )}
+              </div>
+            )}
             {category === "face" ? (
               <>
-                <PalettePicker
+                <PaletteSlider
                   label="Face"
-                  onSelect={setSkinPalette}
+                  onChange={setSkinPosition}
                   options={skinPalettes}
-                  selected={skinPalette}
+                  value={skinPosition}
                 />
                 <AvatarOptionGrid
                   category="face"
@@ -587,11 +602,11 @@ export function AvatarEditor({
 
             {category === "hair" ? (
               <>
-                <PalettePicker
+                <PaletteSlider
                   label="Hair"
-                  onSelect={setHairPalette}
-                  options={hairPalettes}
-                  selected={hairPalette}
+                  onChange={setHairPosition}
+                  options={hairSliderPalettes}
+                  value={hairPosition}
                 />
                 <AvatarOptionGrid
                   category="hair"
@@ -680,56 +695,20 @@ export function AvatarEditor({
               </div>
             ) : null}
           </div>
-
-          <div className={styles.panelFooter}>
-            <div className={styles.footerActions}>
-              <DownloadButton pendingAction={pendingAction} onDownload={runPngAction} />
-              <button
-                aria-label={pendingAction === "save" ? "Saving avatar" : saved ? "Saved" : "Save avatar"}
-                className={`${styles.export} ${styles.saveAction}`}
-                disabled={pendingAction !== null}
-                onClick={() => runPngAction("save")}
-                type="button"
-              >
-                <svg aria-hidden fill="none" height="18" viewBox="0 0 24 24" width="18">
-                  <path d="M5 4h12l2 2v14H5z" />
-                  <path d="M8 4v6h8V4M8 20v-6h8v6" />
-                </svg>
-                <span aria-live="polite">{pendingAction === "save" ? "Saving…" : saved ? "Saved" : "Save"}</span>
+          {exportError && <p className={`${styles.exportError} ${styles.stepError}`} role="alert">{exportError}</p>}
+          <nav className={styles.stepNav} aria-label="Editor steps">
+            {stepIndex > 0 && (
+              <button className={`${styles.export} ${styles.secondaryAction}`} type="button" disabled={pendingAction !== null}
+                onClick={() => goToStep(avatarCategories[stepIndex - 1])}>Back</button>
+            )}
+            {category !== "finish" && (
+              <button className={`${styles.export} ${category === "background" ? styles.saveAction : styles.secondaryAction} ${styles.nextStep}`}
+                type="button" disabled={pendingAction !== null} aria-label="Next" aria-busy={savingControl === "next"}
+                onClick={() => goToStep(stepIndex + 1 === avatarCategories.length ? "finish" : avatarCategories[stepIndex + 1], "next")}>
+                {savingControl === "next" ? <span className={styles.buttonSpinner} role="status" aria-label="Saving your Yalemoji" /> : "Next"}
               </button>
-            </div>
-            {exportError ? (
-              <div className={styles.footerStatus}>
-                <p className={styles.exportError} role="alert">{exportError}</p>
-              </div>
-            ) : notice ? (
-              <div className={styles.footerStatus}>
-                <p role="status" style={{ margin: 0, fontSize: 12, lineHeight: 1.3 }}>
-                  {notice}
-                  {backup ? (
-                    <>
-                      {" "}
-                      <button
-                        onClick={restoreBackup}
-                        style={{
-                          padding: 0,
-                          border: 0,
-                          background: "none",
-                          color: "inherit",
-                          font: "inherit",
-                          textDecoration: "underline",
-                          cursor: "pointer"
-                        }}
-                        type="button"
-                      >
-                        Bring back previous edits
-                      </button>
-                    </>
-                  ) : null}
-                </p>
-              </div>
-            ) : null}
-          </div>
+            )}
+          </nav>
         </aside>
       </div>
     </section>

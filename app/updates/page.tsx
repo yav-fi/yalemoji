@@ -4,8 +4,8 @@ import { UpdatesTimeline } from "@/components/updates-timeline";
 import styles from "@/components/info-page.module.css";
 
 export const metadata: Metadata = {
-  title: "Updates · YaleMoji",
-  description: "YaleMoji updates and release history."
+  title: "Updates · Yalemoji",
+  description: "Yalemoji updates and release history."
 };
 
 // Keep releases in reverse chronological order, newest first.

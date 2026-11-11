@@ -171,6 +171,7 @@ export async function commitAvatarVersion(
   version: number,
   data: {
     avatarId: string;
+    setAsCurrent?: boolean;
     config: AvatarConfig;
     pngUrl: string;
     svgUrl: string;
@@ -199,7 +200,7 @@ export async function commitAvatarVersion(
       { merge: true }
     );
 
-    if (version > currentVersion) {
+    if (data.setAsCurrent !== false && version > currentVersion) {
       transaction.set(
         userRef,
         {

@@ -93,7 +93,7 @@ export function CreateExperience() {
 
             <div className={styles.center}>
               <div className={styles.avatar}>
-                <div aria-label="A YaleMoji cycling through different looks" className={styles.avatarPreview} role="img">
+                <div aria-label="A Yalemoji cycling through different looks" className={styles.avatarPreview} role="img">
                   <AvatarCanvas
                     accessories={config.accessories}
                     facialHairId={config.facialHairId}
@@ -107,9 +107,9 @@ export function CreateExperience() {
           </div>
         ) : null}
         <div aria-hidden={!introductionVisible} className={styles.introduction}>
-          <h1 aria-label="Introducing YaleMoji" className={styles.title}>
+          <h1 aria-label="Introducing Yalemoji" className={styles.title}>
             <span className={styles.introducing}>Introducing</span>{" "}
-            <Image alt="YaleMoji" className={styles.logo} height={127} priority src="/assets/yalemoji.svg" width={465} />
+            <Image alt="Yalemoji" className={styles.logo} height={127} priority src="/assets/yalemoji.svg" width={465} />
           </h1>
         </div>
       </div>

@@ -18,6 +18,15 @@ function baseConfig() {
 }
 
 describe("validateAvatarConfig", () => {
+  it("accepts fractional color positions and rejects invalid positions", () => {
+    const config = { ...baseConfig(), skinColorPosition: 0.51, hairColorPosition: 5.25 };
+    expect(validateAvatarConfig(config)).toMatchObject(config);
+    expect(sanitizeAvatarConfig(config, baseConfig())).toMatchObject(config);
+    for (const value of [-1, 99, NaN, Infinity, "0.5", null]) {
+      expect(validateAvatarConfig({ ...config, skinColorPosition: value })).toBeNull();
+      expect(validateAvatarConfig({ ...config, hairColorPosition: value })).toBeNull();
+    }
+  });
   it("accepts a well-formed config", () => {
     expect(validateAvatarConfig(baseConfig())).not.toBeNull();
   });
