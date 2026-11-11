@@ -22,7 +22,14 @@ async function authorize(
     return { response: NextResponse.json({ error: "not_found" }, { status: 404 }) };
   }
 
-  const rateLimit = await checkDesignEditRateLimit(user.netid);
+  let rateLimit: Awaited<ReturnType<typeof checkDesignEditRateLimit>>;
+  try {
+    rateLimit = await checkDesignEditRateLimit(user.netid);
+  } catch (error) {
+    // A Firestore failure here would otherwise escape as an unshaped 500.
+    console.error("Design edit rate limit failed", error);
+    return { response: NextResponse.json({ error: "server_error" }, { status: 500 }) };
+  }
   if (!rateLimit.allowed) {
     return {
       response: NextResponse.json(

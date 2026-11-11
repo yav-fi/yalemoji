@@ -146,3 +146,23 @@ describe("DELETE /api/designs/{version}", () => {
     expect(deleteDesign).not.toHaveBeenCalled();
   });
 });
+
+describe("when the rate-limit check itself fails", () => {
+  it("returns a shaped 500 for both methods and touches nothing", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(checkDesignEditRateLimit).mockRejectedValue(new Error("firestore down"));
+
+    const patch = await PATCH(patchRequest({ name: "Park" }), ctx("3"));
+    expect(patch.status).toBe(500);
+    expect(await patch.json()).toEqual({ error: "server_error" });
+
+    const del = await DELETE(deleteRequest(), ctx("3"));
+    expect(del.status).toBe(500);
+    expect(await del.json()).toEqual({ error: "server_error" });
+
+    expect(renameDesign).not.toHaveBeenCalled();
+    expect(deleteDesign).not.toHaveBeenCalled();
+    vi.mocked(checkDesignEditRateLimit).mockReset();
+    vi.mocked(checkDesignEditRateLimit).mockResolvedValue({ allowed: true, retryAfterSeconds: 0 });
+  });
+});
