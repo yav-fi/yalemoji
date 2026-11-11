@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useId } from "react";
 import { useDropdown } from "./use-dropdown";
 import { ProfileMenuIcon } from "./profile-menu-icon";
+import type { ActivePage } from "./site-header";
 import styles from "./profile-menu.module.css";
 
 export function ProfileMenu({
@@ -18,7 +19,7 @@ export function ProfileMenu({
   avatarUrl: string | null;
   firstName?: string;
   netid: string | null;
-  activePage?: "home" | "editor" | "about" | "updates";
+  activePage?: ActivePage;
 }) {
   const { closeDropdown, closing, open, toggleDropdown, wrapperRef } = useDropdown();
   const dropdownId = useId();

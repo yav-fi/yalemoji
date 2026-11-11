@@ -77,4 +77,15 @@ describe("SiteHeader", () => {
     expect(dropdownImages[0]).toHaveAttribute("src", backgroundUrl);
     expect(dropdownImages[1]).toHaveAttribute("src", avatarUrl);
   });
+
+  it("links to Designs next to Editor and marks it as the current page", () => {
+    render(
+      <SiteHeader activePage="designs" avatarBackgroundUrl={null} avatarUrl={null} netid="abc123" />
+    );
+
+    const designs = screen.getByRole("link", { name: "Designs" });
+    expect(designs).toHaveAttribute("href", "/designs");
+    expect(designs).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Editor" })).not.toHaveAttribute("aria-current");
+  });
 });
