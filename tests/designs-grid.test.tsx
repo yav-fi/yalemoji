@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DesignsGrid } from "@/components/designs-grid";
 import { defaultConfig } from "@/lib/avatar-config";
 import type { Design } from "@/lib/designs";
@@ -58,18 +58,29 @@ function startRename(name: string, value: string) {
   return input;
 }
 
-afterEach(() => vi.unstubAllGlobals());
+// Only Date is faked, so the ages are fixed but timers and waitFor still run.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-11T17:00:00.000Z"));
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe("DesignsGrid", () => {
   describe("cards", () => {
-    it("show the name, the saved date and a link that opens the design", () => {
+    it("show the name, a short age and a link that opens the design", () => {
       stubFetch(() => json(200, {}));
       render(<DesignsGrid designs={fixtures()} />);
 
       for (const { version, name, savedLabel } of fixtures()) {
         const item = within(card(name));
         expect(item.getByText(name)).toBeInTheDocument();
-        expect(item.getByText(`Saved ${savedLabel}`).tagName).toBe("TIME");
+        // Saved Nov 3 and Nov 1; "now" is Nov 11. The full date is the tooltip.
+        const age = item.getByText(version === 3 ? "8d ago" : "10d ago");
+        expect(age.tagName).toBe("TIME");
+        expect(age).toHaveAttribute("title", `Saved ${savedLabel}`);
         expect(item.getByRole("link", { name: `Open ${name}` })).toHaveAttribute(
           "href",
           `/editor?design=${version}`
@@ -82,11 +93,18 @@ describe("DesignsGrid", () => {
       render(<DesignsGrid designs={fixtures()} />);
 
       const current = within(card("Beach day"));
-      expect(current.getByText("Current")).toBeInTheDocument();
+      // No separate chip: the select button is pressed (filled, with a check).
+      expect(current.getByRole("button", { name: "Make Beach day current" })).toHaveAttribute(
+        "aria-pressed",
+        "true"
+      );
+      expect(current.getByRole("button", { name: "Make Beach day current" })).toHaveTextContent("Current");
       expect(
-        current.getByText("Current avatar: save a different design to remove this one.")
+        current.getByText("Current avatar: make another design current to remove this one.")
       ).toBeInTheDocument();
-      expect(within(card("Untitled 1")).queryByText("Current")).not.toBeInTheDocument();
+      expect(
+        within(card("Untitled 1")).getByRole("button", { name: "Make Untitled 1 current" })
+      ).toHaveAttribute("aria-pressed", "false");
 
       const remove = current.getByRole("button", { name: "Remove Beach day" });
       expect(remove).toHaveAttribute("aria-disabled", "true");
@@ -307,27 +325,27 @@ describe("DesignsGrid", () => {
     it("links the current card's helper text to its Remove button", () => {
       render(<DesignsGrid designs={fixtures()} />);
       expect(screen.getByRole("button", { name: "Remove Beach day" })).toHaveAccessibleDescription(
-        "Current avatar: save a different design to remove this one."
+        "Current avatar: make another design current to remove this one."
       );
     });
   });
 
   describe("making a design current", () => {
-    it("moves the Current badge and the remove rule, and refreshes the header", async () => {
+    it("moves the selected state and the remove rule, and refreshes the header", async () => {
       refresh.mockClear();
       const fetchMock = stubFetch(() => json(200, { version: 1 }));
       render(<DesignsGrid designs={fixtures()} />);
 
-      expect(within(card("Beach day")).queryByRole("button", { name: /current$/ })).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: "Make Untitled 1 current" }));
+      const select = (name: string) => screen.getByRole("button", { name: `Make ${name} current` });
+      fireEvent.click(select("Untitled 1"));
 
-      await waitFor(() => expect(within(card("Untitled 1")).getByText("Current")).toBeInTheDocument());
+      await waitFor(() => expect(select("Untitled 1")).toHaveAttribute("aria-pressed", "true"));
       expect(fetchMock).toHaveBeenCalledWith("/api/designs/1/current", { method: "POST" });
-      expect(within(card("Beach day")).queryByText("Current")).not.toBeInTheDocument();
+      expect(select("Beach day")).toHaveAttribute("aria-pressed", "false");
+      expect(select("Beach day")).toHaveTextContent("Make current");
       expect(screen.getByRole("button", { name: "Remove Untitled 1" })).toHaveAttribute("aria-disabled", "true");
       expect(screen.getByRole("button", { name: "Remove Beach day" })).not.toHaveAttribute("aria-disabled");
-      expect(screen.getByRole("button", { name: "Make Beach day current" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Rename Untitled 1" })).toHaveFocus();
+      expect(select("Untitled 1")).toHaveFocus();
       expect(screen.getByRole("status")).toHaveTextContent("'Untitled 1' is now your current avatar.");
       expect(refresh).toHaveBeenCalledTimes(1);
     });
@@ -356,7 +374,7 @@ describe("DesignsGrid", () => {
         expect(screen.queryByRole("link", { name: "Open Untitled 1" })).not.toBeInTheDocument()
       );
       expect(screen.getByRole("status")).toHaveTextContent("This design no longer exists.");
-      expect(within(card("Beach day")).getByText("Current")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Make Beach day current" })).toHaveAttribute("aria-pressed", "true");
     });
 
     it("shows an error and changes nothing when the server fails", async () => {
@@ -367,7 +385,7 @@ describe("DesignsGrid", () => {
       expect(await within(card("Untitled 1")).findByRole("alert")).toHaveTextContent(
         "Couldn't make this design current."
       );
-      expect(within(card("Beach day")).getByText("Current")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Make Beach day current" })).toHaveAttribute("aria-pressed", "true");
     });
   });
 

@@ -3,6 +3,7 @@ import { DEFAULT_SKIN_PALETTE, defaultConfig } from "@/lib/avatar-config";
 import {
   defaultDesignName,
   displayDesigns,
+  formatShortAge,
   parseDesignVersion,
   validateDesignName,
   type RawDesign
@@ -78,5 +79,37 @@ describe("shared editor defaults", () => {
   it("start without eyes and with the default skin palette", () => {
     expect(defaultConfig.selections.eyes).toBeNull();
     expect(defaultConfig.skinPaletteId).toBe(DEFAULT_SKIN_PALETTE.id);
+  });
+});
+
+describe("formatShortAge", () => {
+  const now = Date.parse("2026-11-11T12:00:00.000Z");
+  const ago = (ms: number) => formatShortAge(new Date(now - ms).toISOString(), now);
+  const s = 1000, m = 60 * s, h = 60 * m, d = 24 * h;
+
+  it("uses the shortest unit that fits", () => {
+    expect(ago(0)).toBe("now");
+    expect(ago(4 * s)).toBe("now");
+    expect(ago(33 * s)).toBe("33s ago");
+    expect(ago(59 * s)).toBe("59s ago");
+    expect(ago(m)).toBe("1m ago");
+    expect(ago(59 * m)).toBe("59m ago");
+    expect(ago(4 * h)).toBe("4h ago");
+    expect(ago(23 * h)).toBe("23h ago");
+    expect(ago(d)).toBe("1d ago");
+    expect(ago(23 * d)).toBe("23d ago");
+    expect(ago(29 * d)).toBe("29d ago");
+    expect(ago(30 * d)).toBe("last month");
+    expect(ago(59 * d)).toBe("last month");
+    expect(ago(60 * d)).toBe("2mo ago");
+    expect(ago(359 * d)).toBe("11mo ago");
+    expect(ago(364 * d)).toBe("last year");
+    expect(ago(365 * d)).toBe("last year");
+    expect(ago(730 * d)).toBe("2y ago");
+  });
+
+  it("reads a future or invalid time as now", () => {
+    expect(ago(-10 * m)).toBe("now");
+    expect(formatShortAge("not a date", now)).toBe("now");
   });
 });

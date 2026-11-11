@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { MAX_DESIGN_NAME, type Design } from "@/lib/designs";
+import { formatShortAge, MAX_DESIGN_NAME, type Design } from "@/lib/designs";
 import styles from "./designs-grid.module.css";
 
 type GridDesign = Design & { savedLabel: string };
@@ -12,8 +12,20 @@ type GridDesign = Design & { savedLabel: string };
 // The page heading in app/designs/page.tsx, focused when the last card is removed.
 const HEADING_ID = "designs-title";
 
+// Re-renders every 10 seconds so "33s ago" keeps counting.
+function useNow(intervalMs = 10_000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), intervalMs);
+    return () => window.clearInterval(timer);
+  }, [intervalMs]);
+  return now;
+}
+
 function DesignCard({
   design,
+  now,
   onGone,
   onMadeCurrent,
   onRemoved,
@@ -21,6 +33,7 @@ function DesignCard({
   registerLink
 }: {
   design: GridDesign;
+  now: number;
   onGone: (version: number) => void;
   onMadeCurrent: (version: number) => void;
   onRemoved: (version: number) => void;
@@ -44,7 +57,8 @@ function DesignCard({
   const cancelRef = useRef<HTMLButtonElement>(null);
   const renameRef = useRef<HTMLButtonElement>(null);
   const removeRef = useRef<HTMLButtonElement>(null);
-  const focusNext = useRef<"input" | "cancel" | "rename" | "remove" | null>(null);
+  const selectRef = useRef<HTMLButtonElement>(null);
+  const focusNext = useRef<"input" | "cancel" | "rename" | "remove" | "select" | null>(null);
 
   useEffect(() => {
     const target = focusNext.current;
@@ -55,6 +69,7 @@ function DesignCard({
     } else if (target === "cancel") cancelRef.current?.focus();
     else if (target === "rename") renameRef.current?.focus();
     else if (target === "remove") removeRef.current?.focus();
+    else if (target === "select") selectRef.current?.focus();
   });
 
   const url = `/api/designs/${version}`;
@@ -130,8 +145,7 @@ function DesignCard({
       }
       if (!response.ok) throw new Error("make current failed");
       setBusy(false);
-      // The Make current button goes away, so keep focus on this card.
-      focusNext.current = "rename";
+      focusNext.current = "select";
       onMadeCurrent(version);
     } catch {
       setBusy(false);
@@ -216,11 +230,34 @@ function DesignCard({
       ) : null}
 
       <div className={styles.meta}>
-        <time dateTime={design.createdAt}>Saved {design.savedLabel}</time>
-        {isCurrent ? <span className={styles.badge}>Current</span> : null}
+        {/* The server and browser clocks differ by the render time, so the
+            first browser render may disagree by a few seconds. */}
+        <time dateTime={design.createdAt} suppressHydrationWarning title={`Saved ${design.savedLabel}`}>
+          {formatShortAge(design.createdAt, now)}
+        </time>
       </div>
 
       <div className={styles.actions}>
+        <button
+          aria-label={`Make ${name} current`}
+          aria-pressed={isCurrent}
+          className={`${styles.selectButton} ${isCurrent ? styles.selected : ""}`}
+          disabled={pending}
+          onClick={() => void makeCurrent()}
+          ref={selectRef}
+          type="button"
+        >
+          {isCurrent ? (
+            <>
+              <svg aria-hidden fill="none" height="16" viewBox="0 0 24 24" width="16">
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+              Current
+            </>
+          ) : (
+            "Make current"
+          )}
+        </button>
         <button
           aria-label={`Rename ${name}`}
           className={styles.iconButton}
@@ -248,18 +285,6 @@ function DesignCard({
           </svg>
         </button>
       </div>
-
-      {isCurrent ? null : (
-        <button
-          aria-label={`Make ${name} current`}
-          className={styles.textButton}
-          disabled={pending}
-          onClick={() => void makeCurrent()}
-          type="button"
-        >
-          Make current
-        </button>
-      )}
 
       {mode === "confirm" ? (
         <div className={styles.confirm}>
@@ -295,7 +320,7 @@ function DesignCard({
       ) : null}
 
       {isCurrent ? (
-        <p className={styles.helper} id={helperId}>Current avatar: save a different design to remove this one.</p>
+        <p className={styles.helper} id={helperId}>Current avatar: make another design current to remove this one.</p>
       ) : null}
     </li>
   );
@@ -305,6 +330,7 @@ function DesignCard({
 // it never calls router.refresh().
 export function DesignsGrid({ designs: initialDesigns }: { designs: GridDesign[] }) {
   const router = useRouter();
+  const now = useNow();
   const [designs, setDesigns] = useState(initialDesigns);
   // Read by takeOut, which can run after a later render (two removals in
   // flight), so it must not use a stale closure's list.
@@ -354,6 +380,7 @@ export function DesignsGrid({ designs: initialDesigns }: { designs: GridDesign[]
             <DesignCard
               design={design}
               key={design.version}
+              now={now}
               onGone={(version) => takeOut(version, "This design no longer exists.")}
               onMadeCurrent={(version) => {
                 setDesigns((current) =>

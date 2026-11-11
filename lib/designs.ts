@@ -59,3 +59,22 @@ export function displayDesigns(raw: RawDesign[], currentVersion: number | null):
   }
   return designs.sort((a, b) => b.version - a.version);
 }
+
+// Very short "how long ago" for design cards: now, 33s ago, 4m ago, 4h ago,
+// 23d ago, last month, 5mo ago, last year, 2y ago. A future time (clock skew)
+// reads as "now".
+export function formatShortAge(fromIso: string, nowMs: number): string {
+  const seconds = Math.floor((nowMs - Date.parse(fromIso)) / 1000);
+  if (!Number.isFinite(seconds) || seconds < 5) return "now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  if (days < 60) return "last month";
+  if (days < 360) return `${Math.floor(days / 30)}mo ago`; // never "12mo ago"
+  if (days < 730) return "last year";
+  return `${Math.floor(days / 365)}y ago`;
+}

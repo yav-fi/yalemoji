@@ -44,6 +44,7 @@
 .card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
   align-items: center;
   gap: var(--space-2) var(--space-3);
   min-width: 0;
@@ -78,7 +79,7 @@
 
 .open:focus-visible,
 .iconButton:focus-visible,
-.textButton:focus-visible,
+.selectButton:focus-visible,
 .nameInput:focus-visible,
 .confirmActions button:focus-visible,
 .empty a:focus-visible {
@@ -126,6 +127,12 @@
   font-weight: var(--weight-semibold);
 }
 
+/* The age and the buttons each get a full row. */
+.meta,
+.actions {
+  grid-column: 1 / -1;
+}
+
 .meta {
   display: flex;
   flex-wrap: wrap;
@@ -137,17 +144,9 @@
   line-height: var(--leading-ui);
 }
 
-.badge {
-  padding: 0.1rem var(--space-2);
-  border-radius: var(--radius-full);
-  background: var(--accent);
-  color: var(--accent-foreground);
-  font-size: var(--type-app-label);
-  font-weight: var(--weight-semibold);
-}
-
 .actions {
   display: flex;
+  align-items: center;
   gap: var(--space-1);
 }
 
@@ -244,12 +243,17 @@
   color: var(--accent);
 }
 
-/* Its own full-width row, so the date and icon buttons keep their room. */
-.textButton {
-  grid-column: 1 / -1;
-  width: 100%;
-  padding: var(--space-2);
-  border: 1px solid var(--border);
+/* Fills the row; rename and remove sit beside it. */
+.selectButton {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 0;
+  height: 2.25rem;
+  padding: 0 var(--space-2);
+  border: var(--border-width) solid var(--border);
   border-radius: var(--radius-sm);
   background: none;
   color: var(--foreground-strong);
@@ -259,11 +263,27 @@
   cursor: pointer;
 }
 
-.textButton:hover {
+.selectButton:hover {
   background: var(--muted);
 }
 
-.textButton:disabled {
+/* The current design: filled with the accent blue and a check. */
+.selected,
+.selected:hover {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  cursor: default;
+}
+
+.selectButton svg {
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.selectButton:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
