@@ -222,6 +222,19 @@ describe("useAvatarDraft", () => {
       expect(readDraftBackup("abc123", defaults)).toBeNull();
     });
 
+    it("clears a backup left over from an earlier open when this open makes none", () => {
+      // An earlier open backed up some edits that were never brought back...
+      localStorage.setItem(
+        draftBackupKey("abc123"),
+        JSON.stringify({ schema: 1, config: makeConfig({ hair: "hair-1" }), updatedAt: "" })
+      );
+      // ...and now a design is opened over a draft equal to it.
+      writeDraft("abc123", initial);
+
+      renderOpened();
+      expect(readDraftBackup("abc123", defaults)).toBeNull();
+    });
+
     it("doesn't touch the main draft key while opening, so other tabs aren't notified", () => {
       writeDraft("abc123", makeConfig({ brows: "brows-1" }));
       const setItem = vi.spyOn(Storage.prototype, "setItem");

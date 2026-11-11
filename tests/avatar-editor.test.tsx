@@ -319,11 +319,14 @@ describe("AvatarEditor", () => {
 
     beforeEach(() => {
       localStorage.clear();
+      // As if opened from the Designs page, arriving with a login ?ref.
+      window.history.pushState(null, "", "/editor?design=4&ref=yalies");
       replaceState = vi.spyOn(window.history, "replaceState");
     });
     afterEach(() => {
       localStorage.clear();
       replaceState.mockRestore();
+      window.history.pushState(null, "", "/");
     });
 
     it("shows the design and only clears the address on the first edit", () => {
@@ -338,7 +341,8 @@ describe("AvatarEditor", () => {
       expect(replaceState).not.toHaveBeenCalled();
       fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 1" }));
       expect(replaceState).toHaveBeenCalledTimes(1);
-      expect(replaceState).toHaveBeenCalledWith(null, "", "/editor");
+      // Only ?design is dropped; the path and other parameters are kept.
+      expect(replaceState).toHaveBeenCalledWith(null, "", "/editor?ref=yalies");
 
       fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 2" }));
       expect(replaceState).toHaveBeenCalledTimes(1);
@@ -361,13 +365,31 @@ describe("AvatarEditor", () => {
       expect(
         screen.queryByRole("button", { name: "Bring back previous edits" })
       ).not.toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Brought back your previous edits");
+    });
+
+    it("keeps its state when the page re-renders without ?design after Save", () => {
+      // After the first edit the address has no ?design, so router.refresh()
+      // renders the page's other branch. Both use key="editor", so React must
+      // keep this instance rather than remount it.
+      const { container, rerender } = render(
+        <AvatarEditor initialDesign={beachDay} key="editor" netid="abc123" />
+      );
+      fireEvent.click(screen.getByRole("tab", { name: "Eyebrows" }));
+      fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 1" }));
+
+      rerender(<AvatarEditor designNotFound={false} key="editor" netid="abc123" />);
+
+      expect(screen.getByRole("tab", { name: "Eyebrows" })).toHaveAttribute("aria-selected", "true");
+      expect(container.querySelector('[data-category="brows"]')).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Opened 'Beach day'");
     });
 
     it("says when the design couldn't be found and clears the address", () => {
       render(<AvatarEditor designNotFound netid="abc123" />);
 
       expect(screen.getByRole("status")).toHaveTextContent("That design couldn't be found.");
-      expect(replaceState).toHaveBeenCalledWith(null, "", "/editor");
+      expect(replaceState).toHaveBeenCalledWith(null, "", "/editor?ref=yalies");
     });
   });
 });

@@ -27,7 +27,11 @@ export default async function EditorPage({ searchParams }: {
 
   const avatar = await getCurrentAvatar(user.netid).catch(() => null);
 
-  // ?design=N opens a saved design as a working draft. Anything that isn't a
+  // ?design=N opens a saved design as a working draft. Both branches share
+  // one key: after the first edit the address no longer has ?design, so a
+  // router.refresh() (e.g. after Save) renders the other branch, and a
+  // different key would remount the editor and lose its state.
+  // Anything that isn't a
   // usable design of this user's is reported as not found.
   const hasDesignParam = params.design !== undefined;
   const version = parseDesignVersion(params.design);
@@ -47,11 +51,11 @@ export default async function EditorPage({ searchParams }: {
         {design && designConfig ? (
           <AvatarEditor
             initialDesign={{ version: design.version, name: design.name, config: designConfig }}
-            key={design.version}
+            key="editor"
             netid={user.netid}
           />
         ) : (
-          <AvatarEditor designNotFound={hasDesignParam} netid={user.netid} />
+          <AvatarEditor key="editor" designNotFound={hasDesignParam} netid={user.netid} />
         )}
       </main>
     </>

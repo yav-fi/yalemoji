@@ -326,7 +326,7 @@ export function AvatarEditor({
   const [facialHairId, setFacialHairId] = useState<string | null>(initialState.facialHairId);
   const [accessories, setAccessories] = useState<AccessorySelections>(initialState.accessories);
   // Captured on the first render so it survives the address being cleared.
-  const [notice] = useState<string | null>(() =>
+  const [notice, setNotice] = useState<string | null>(() =>
     initialDesign
       ? `Opened '${initialDesign.name}'`
       : designNotFound
@@ -387,6 +387,7 @@ export function AvatarEditor({
     applyConfig(backup);
     if (netid) clearDraftBackup(netid);
     setBackup(null);
+    setNotice("Brought back your previous edits");
   }
 
   // Keep ?design=N until the first edit, so a reload reopens the same design.
@@ -402,9 +403,11 @@ export function AvatarEditor({
       openedSerialized.current !== null && serializedConfig !== openedSerialized.current;
     if (!edited && !designNotFound) return;
     addressCleared.current = true;
-    // Not router.replace: that would re-render the page without ?design, which
-    // changes the editor's key and remounts it mid-edit.
-    window.history.replaceState(null, "", "/editor");
+    // Not router.replace, which would re-render the page mid-edit. Only
+    // ?design is removed; the path and any other parameters (ref, mode) stay.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("design");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }, [serializedConfig, designNotFound]);
 
   const selectedPalette = category === "hair" ? hairPalette : skinPalette;

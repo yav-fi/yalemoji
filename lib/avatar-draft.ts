@@ -177,6 +177,10 @@ export function useAvatarDraft({
       const opened = serializeAvatarConfig(initial);
       if (draft && draft !== "unavailable" && serializeAvatarConfig(draft) !== opened) {
         writeStoredDraft(draftBackupKey(netid), draft);
+      } else {
+        // A backup left over from an earlier open isn't this open's previous
+        // edits, so it must not be offered.
+        clearDraftBackup(netid);
       }
       // The first edit autosaves as usual.
       lastWritten.current = opened;
