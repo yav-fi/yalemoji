@@ -80,6 +80,12 @@ describe("POST /api/avatar", () => {
     expect(response.status).toBe(200);
     expect(reserveNextVersion).toHaveBeenCalledWith("abc123");
     expect(commitAvatarVersion).toHaveBeenCalledWith("abc123", 1, expect.objectContaining({ setAsCurrent: true }));
+    // The checkmark's save is both named for the Designs list and made current.
+    expect(commitAvatarVersion).toHaveBeenCalledWith(
+      "abc123",
+      1,
+      expect.objectContaining({ setAsCurrent: true, name: expect.stringMatching(/^Untitled/) })
+    );
   });
 
   it("generates and uploads a design without setting it as current", async () => {

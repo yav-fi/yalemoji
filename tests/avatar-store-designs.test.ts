@@ -1,6 +1,7 @@
 import type { Firestore } from "@google-cloud/firestore";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  commitAvatarVersion,
   deleteDesign,
   getAvatarId,
   getDesign,
@@ -194,6 +195,46 @@ describe("design store functions", () => {
 
       await expect(makeDesignCurrent("abc123", 5, db)).resolves.toBe("ok");
       expect(docs.get("users/abc123")).toEqual(user);
+    });
+  });
+
+  describe("the editor's checkmark save (commitAvatarVersion)", () => {
+    const save = (setAsCurrent: boolean) => ({
+      avatarId: "aid",
+      setAsCurrent,
+      config: { selections: {} } as never,
+      pngUrl: "https://example.test/6/avatar.png",
+      svgUrl: "https://example.test/6/avatar.svg",
+      backgroundUrl: "https://example.test/6/background.svg",
+      name: "Untitled 3"
+    });
+
+    it("adds a named design and makes it current, even after an older one was made current", async () => {
+      // Version 2 was made current from the Designs page while 5 already existed.
+      const { db, docs } = fakeFirestore({
+        "users/abc123": { avatarVersion: 2, versionCounter: 5 },
+        "users/abc123/avatars/2": version
+      });
+
+      await commitAvatarVersion("abc123", 6, save(true), db);
+
+      expect(docs.get("users/abc123/avatars/6")).toMatchObject({ name: "Untitled 3" });
+      expect(docs.get("users/abc123")).toMatchObject({
+        avatarVersion: 6,
+        pngUrl: "https://example.test/6/avatar.png"
+      });
+    });
+
+    it("adds a named design without making it current when asked not to", async () => {
+      const { db, docs } = fakeFirestore({
+        "users/abc123": { avatarVersion: 2, versionCounter: 5 },
+        "users/abc123/avatars/2": version
+      });
+
+      await commitAvatarVersion("abc123", 6, save(false), db);
+
+      expect(docs.get("users/abc123/avatars/6")).toMatchObject({ name: "Untitled 3" });
+      expect(docs.get("users/abc123")).toMatchObject({ avatarVersion: 2 });
     });
   });
 
