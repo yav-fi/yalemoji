@@ -5,6 +5,9 @@ import { DesignsGrid } from "@/components/designs-grid";
 import { defaultConfig } from "@/lib/avatar-config";
 import type { Design } from "@/lib/designs";
 
+const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: ComponentProps<"a">) => (
     <a href={href} {...props}>
@@ -306,6 +309,65 @@ describe("DesignsGrid", () => {
       expect(screen.getByRole("button", { name: "Remove Beach day" })).toHaveAccessibleDescription(
         "Current avatar: save a different design to remove this one."
       );
+    });
+  });
+
+  describe("making a design current", () => {
+    it("moves the Current badge and the remove rule, and refreshes the header", async () => {
+      refresh.mockClear();
+      const fetchMock = stubFetch(() => json(200, { version: 1 }));
+      render(<DesignsGrid designs={fixtures()} />);
+
+      expect(within(card("Beach day")).queryByRole("button", { name: /current$/ })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Make Untitled 1 current" }));
+
+      await waitFor(() => expect(within(card("Untitled 1")).getByText("Current")).toBeInTheDocument());
+      expect(fetchMock).toHaveBeenCalledWith("/api/designs/1/current", { method: "POST" });
+      expect(within(card("Beach day")).queryByText("Current")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Remove Untitled 1" })).toHaveAttribute("aria-disabled", "true");
+      expect(screen.getByRole("button", { name: "Remove Beach day" })).not.toHaveAttribute("aria-disabled");
+      expect(screen.getByRole("button", { name: "Make Beach day current" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Rename Untitled 1" })).toHaveFocus();
+      expect(screen.getByRole("status")).toHaveTextContent("'Untitled 1' is now your current avatar.");
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("disables the card's buttons while the request is pending", async () => {
+      const response = deferred<Response>();
+      const fetchMock = stubFetch(() => response.promise);
+      render(<DesignsGrid designs={fixtures()} />);
+
+      const button = screen.getByRole("button", { name: "Make Untitled 1 current" });
+      fireEvent.click(button);
+      fireEvent.click(button);
+      expect(button).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Remove Untitled 1" })).toBeDisabled();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      await act(async () => response.resolve(json(200, { version: 1 })));
+    });
+
+    it("removes the card when the design no longer exists", async () => {
+      stubFetch(() => json(404, { error: "not_found" }));
+      render(<DesignsGrid designs={fixtures()} />);
+      fireEvent.click(screen.getByRole("button", { name: "Make Untitled 1 current" }));
+
+      await waitFor(() =>
+        expect(screen.queryByRole("link", { name: "Open Untitled 1" })).not.toBeInTheDocument()
+      );
+      expect(screen.getByRole("status")).toHaveTextContent("This design no longer exists.");
+      expect(within(card("Beach day")).getByText("Current")).toBeInTheDocument();
+    });
+
+    it("shows an error and changes nothing when the server fails", async () => {
+      stubFetch(() => json(500, { error: "server_error" }));
+      render(<DesignsGrid designs={fixtures()} />);
+      fireEvent.click(screen.getByRole("button", { name: "Make Untitled 1 current" }));
+
+      expect(await within(card("Untitled 1")).findByRole("alert")).toHaveTextContent(
+        "Couldn't make this design current."
+      );
+      expect(within(card("Beach day")).getByText("Current")).toBeInTheDocument();
     });
   });
 

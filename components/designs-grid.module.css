@@ -78,6 +78,7 @@
 
 .open:focus-visible,
 .iconButton:focus-visible,
+.textButton:focus-visible,
 .nameInput:focus-visible,
 .confirmActions button:focus-visible,
 .empty a:focus-visible {
@@ -241,4 +242,26 @@
 
 .empty a {
   color: var(--accent);
+}
+
+.textButton {
+  margin-inline-end: auto;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--foreground-strong);
+  font: inherit;
+  font-size: var(--type-app-label);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.textButton:hover {
+  background: var(--muted);
+}
+
+.textButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }

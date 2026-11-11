@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { MAX_DESIGN_NAME, type Design } from "@/lib/designs";
 import styles from "./designs-grid.module.css";
@@ -14,12 +15,14 @@ const HEADING_ID = "designs-title";
 function DesignCard({
   design,
   onGone,
+  onMadeCurrent,
   onRemoved,
   onRenamed,
   registerLink
 }: {
   design: GridDesign;
   onGone: (version: number) => void;
+  onMadeCurrent: (version: number) => void;
   onRemoved: (version: number) => void;
   onRenamed: (version: number, name: string) => void;
   registerLink: (version: number, link: HTMLAnchorElement | null) => void;
@@ -115,6 +118,27 @@ function DesignCard({
     }
   }
 
+  async function makeCurrent() {
+    if (isCurrent || pendingRef.current) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`${url}/current`, { method: "POST" });
+      if (response.status === 404) {
+        onGone(version);
+        return;
+      }
+      if (!response.ok) throw new Error("make current failed");
+      setBusy(false);
+      // The Make current button goes away, so keep focus on this card.
+      focusNext.current = "rename";
+      onMadeCurrent(version);
+    } catch {
+      setBusy(false);
+      setError("Couldn't make this design current.");
+    }
+  }
+
   function askRemove() {
     if (isCurrent || pendingRef.current) return;
     setError(null);
@@ -197,6 +221,17 @@ function DesignCard({
       </div>
 
       <div className={styles.actions}>
+        {isCurrent ? null : (
+          <button
+            aria-label={`Make ${name} current`}
+            className={styles.textButton}
+            disabled={pending}
+            onClick={() => void makeCurrent()}
+            type="button"
+          >
+            Make current
+          </button>
+        )}
         <button
           aria-label={`Rename ${name}`}
           className={styles.iconButton}
@@ -268,6 +303,7 @@ function DesignCard({
 // This grid is the source of truth for the list once the page has rendered, so
 // it never calls router.refresh().
 export function DesignsGrid({ designs: initialDesigns }: { designs: GridDesign[] }) {
+  const router = useRouter();
   const [designs, setDesigns] = useState(initialDesigns);
   // Read by takeOut, which can run after a later render (two removals in
   // flight), so it must not use a stale closure's list.
@@ -318,6 +354,15 @@ export function DesignsGrid({ designs: initialDesigns }: { designs: GridDesign[]
               design={design}
               key={design.version}
               onGone={(version) => takeOut(version, "This design no longer exists.")}
+              onMadeCurrent={(version) => {
+                setDesigns((current) =>
+                  current.map((item) => ({ ...item, isCurrent: item.version === version }))
+                );
+                setAnnouncement(`'${design.name}' is now your current avatar.`);
+                // Updates the header avatar. The grid keeps its own list: its
+                // state was seeded once and ignores the new props.
+                router.refresh();
+              }}
               onRemoved={(version) => takeOut(version, "")}
               onRenamed={(version, name) =>
                 setDesigns((current) =>
