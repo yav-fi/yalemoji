@@ -5,8 +5,8 @@ import { PublicSiteHeader } from "@/components/public-site-header";
 import styles from "@/components/info-page.module.css";
 
 export const metadata: Metadata = {
-  title: "About · YaleMoji",
-  description: "Meet the person behind YaleMoji, your personal avatar for Yale."
+  title: "About · Yalemoji",
+  description: "Meet the person behind Yalemoji, your personal avatar for Yale."
 };
 
 export default function AboutPage() {
@@ -15,9 +15,9 @@ export default function AboutPage() {
       <PublicSiteHeader activePage="about" />
       <main className={styles.page}>
         <section className={styles.hero} aria-labelledby="about-title">
-          <h1 id="about-title">About YaleMoji</h1>
+          <h1 id="about-title">About Yalemoji</h1>
           <p className={styles.intro}>
-            YaleMoji allows students to express themselves across Yale student products.
+            Yalemoji allows students to express themselves across Yale student products.
             It&apos;s run by a small team within the{" "}
             <a href="http://yalecomputersociety.org/">Yale Computer Society</a>.
           </p>
@@ -30,7 +30,7 @@ export default function AboutPage() {
               <Image className={styles.teamPhoto} src="/team/yavin_fickel.jpg" alt="Yavin Fickel" width={224} height={224} sizes="(max-width: 27rem) 224px, (max-width: 43.75rem) 50vw, (max-width: 56rem) 33vw, 224px" />
               <div className={styles.teamInfo}>
                 <h3>Yavin Fickel</h3>
-                <p className={styles.role}>YaleMoji Team Lead</p>
+                <p className={styles.role}>Yalemoji Team Lead</p>
                 <div className={styles.socialLinks}>
                   <GitHubLink className={styles.githubLink} />
                   <a className={styles.socialLink} href="https://linkedin.com/in/yavin" target="_blank" rel="noopener noreferrer">

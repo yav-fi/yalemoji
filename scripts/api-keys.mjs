@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Issue, list, and revoke API keys for apps that read YaleMoji avatars.
+// Issue, list, and revoke API keys for apps that read Yalemoji avatars.
 //
 //   npm run api-keys -- create <app> "<description>"
 //   npm run api-keys -- list

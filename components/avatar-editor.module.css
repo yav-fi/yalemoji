@@ -84,6 +84,7 @@
 
 .panel {
   display: flex;
+  container: editor-panel / inline-size;
   flex: 0 1 556px;
   width: 100%;
   min-width: 280px;
@@ -99,18 +100,23 @@
 }
 
 .tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   flex: none;
-  overflow-x: auto;
-  padding: 0 8px;
+  padding: 4px 8px 0;
   border-bottom: 1px solid rgba(0, 53, 107, 0.08);
-  scrollbar-width: thin;
 }
 
 .tab {
   position: relative;
-  flex: none;
-  padding: 12px 16px;
+  display: flex;
+  min-width: 0;
+  min-height: 64px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 2px;
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
@@ -124,12 +130,24 @@
     color var(--motion-fast) var(--ease-standard);
 }
 
-.tab > span {
-  display: block;
-  height: 0;
-  overflow: hidden;
-  font-weight: 700;
-  visibility: hidden;
+.tab svg {
+  flex: none;
+}
+
+.tabLabel {
+  max-width: 100%;
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+@container editor-panel (max-width: 500px) {
+  .tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .tabLabel {
+    font-size: 10px;
+  }
 }
 
 .tab[data-active="true"] {
@@ -481,4 +499,100 @@
     align-items: flex-start;
     overflow-y: auto;
   }
+}
+
+.previewNotice {
+  position: absolute;
+  top: 4px;
+  left: 16px;
+  margin: 0;
+  color: var(--foreground-muted);
+  font-size: 11px;
+}
+
+.finishTab,
+.finishTab:hover,
+.finishTab[data-active="true"] {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  align-self: center;
+  justify-self: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+}
+
+:global(:root[data-theme="dark"]) .finishTab,
+:global(:root[data-theme="dark"]) .finishTab:hover,
+:global(:root[data-theme="dark"]) .finishTab[data-active="true"] {
+  background: #2863a0;
+  color: #fff;
+}
+
+.finishPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.finishPanel h2 {
+  margin: 8px 0 0;
+  color: var(--foreground);
+  font-size: 22px;
+}
+
+.finishPanel p {
+  margin: 0 0 6px;
+  color: var(--foreground-muted);
+  font-size: 13px;
+}
+
+.finishPanel button {
+  min-height: 44px;
+  height: auto;
+  padding: 12px;
+  white-space: normal;
+}
+
+.stepNav {
+  display: flex;
+  flex: none;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.nextStep {
+  margin-left: auto;
+}
+
+.done {
+  min-height: 44px;
+  text-decoration: none;
+}
+
+.finishPanel > h2 { text-align: center; margin-bottom: 12px; }
+
+.buttonSpinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 0.7s linear infinite;
+}
+
+.nextStep { min-width: 64px; }
+.stepError { padding: 10px 20px; }
+
+@keyframes button-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .buttonSpinner { animation: none; }
 }

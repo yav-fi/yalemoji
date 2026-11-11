@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useRef, type CSSProperties } from "react";
 import { DraggableSticker } from "./draggable-sticker";
+import { useBoardPhysics } from "./use-board-physics";
 import { MedalTug } from "./medal-tug";
 import { useBoolaBoolaPlayer } from "./use-boola-boola-player";
 import styles from "./landing-hero.module.css";
@@ -44,6 +45,7 @@ const SOUND_BARS = [
 const BUMP_DURATION_MS = 500;
 
 export function LandingHero() {
+  const stageRef = useBoardPhysics();
   const [tugCount, setTugCount] = useState(0);
   const { isPlaying, toggle: toggleAirpod } = useBoolaBoolaPlayer();
   const [bumping, setBumping] = useState(false);
@@ -60,19 +62,22 @@ export function LandingHero() {
   }
 
   return (
-    <section aria-label="YaleMoji" className={styles.stage} data-landing-stage="">
+    <section aria-label="YaleMoji" className={styles.stage} data-landing-stage="" ref={stageRef}>
       <div className={styles.core} style={coreStyle(PLACEMENT.wordmark)}>
-        <Image
-          alt="YaleMoji"
-          className={styles.wordmarkImage}
-          height={127}
-          priority
-          src="/assets/yalemoji.svg"
-          width={465}
-        />
+        <div className={styles.physicsCore} data-physics-body="" data-mass-grams={1000000}>
+          <Image
+            alt="YaleMoji"
+            draggable={false}
+            className={styles.wordmarkImage}
+            height={127}
+            priority
+            src="/assets/yalemoji.svg"
+            width={465}
+          />
+        </div>
       </div>
 
-      <DraggableSticker placement={PLACEMENT.stickyNote}>
+      <DraggableSticker mass={8} placement={PLACEMENT.stickyNote}>
         <Image
           alt=""
           className={styles.stickyNote}
@@ -118,7 +123,7 @@ export function LandingHero() {
         />
       </DraggableSticker>
 
-      <DraggableSticker placement={PLACEMENT.star}>
+      <DraggableSticker mass={15} placement={PLACEMENT.star}>
         <div className={styles.star}>
           <Image alt="" className={styles.starImage} height={116} src="/assets/landing/star.svg" width={116} />
         </div>
@@ -128,6 +133,7 @@ export function LandingHero() {
         ariaLabel={isPlaying ? "Pause Boola Boola" : "Play Boola Boola"}
         onTap={handleAirpodTap}
         placement={PLACEMENT.soundCluster}
+        mass={5}
         pressed={isPlaying}
       >
         <div className={styles.soundCluster}>
@@ -151,17 +157,19 @@ export function LandingHero() {
       <MedalTug onTug={() => setTugCount((count) => count + 1)} placement={PLACEMENT.medal} />
 
       <div className={styles.core} style={coreStyle(PLACEMENT.cta)}>
-        <Link className={styles.cta} href="/editor">
-          CREATE NOW
-        </Link>
+        <div className={styles.physicsCore} data-physics-body="" data-mass-grams={1000000}>
+          <Link className={styles.cta} draggable={false} href="/editor">
+            CREATE NOW
+          </Link>
+        </div>
       </div>
 
       {tugCount > 0 && (
-        <div className={styles.core} style={coreStyle(PLACEMENT.tugText)}>
+        <DraggableSticker mass={2} placement={PLACEMENT.tugText}>
           <p className={styles.tugText}>
             <strong>{tugCount}</strong> {tugCount === 1 ? "tug!" : "tugs!"}
           </p>
-        </div>
+        </DraggableSticker>
       )}
     </section>
   );

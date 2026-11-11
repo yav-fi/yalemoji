@@ -10,6 +10,7 @@ import {
   normalizeAvatarSvg,
   replacePaletteVariables
 } from "@/lib/avatar-svg";
+import { hairSliderPalettes, interpolatePalette } from "./avatar-colors";
 import type { AvatarConfig } from "@/lib/avatar-config";
 
 const ASSET_SIZE = 512;
@@ -34,8 +35,8 @@ function findPalette(palettes: readonly AvatarPalette[], id: string) {
 }
 
 async function composeSubjectSvg(config: AvatarConfig) {
-  const skinPalette = findPalette(skinPalettes, config.skinPaletteId);
-  const hairPalette = findPalette(hairPalettes, config.hairPaletteId);
+  const skinPalette = config.skinColorPosition === undefined ? findPalette(skinPalettes, config.skinPaletteId) : interpolatePalette(skinPalettes, config.skinColorPosition);
+  const hairPalette = config.hairColorPosition === undefined ? findPalette(hairPalettes, config.hairPaletteId) : interpolatePalette(hairSliderPalettes, config.hairColorPosition);
   const layers = createAvatarLayers(
     config.selections,
     config.accessories,

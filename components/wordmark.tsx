@@ -4,7 +4,7 @@ import styles from "./wordmark.module.css";
 
 export function Wordmark() {
   return (
-    <ContextLink aria-label="YaleMoji home" className={styles.wordmark} href="/">
+    <ContextLink aria-label="Yalemoji home" className={styles.wordmark} href="/">
       <Image
         alt=""
         className={`${styles.logo} ${styles.logoLight}`}

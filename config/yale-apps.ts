@@ -11,7 +11,7 @@ export type YaleApp = {
 
 export const yalemojiApp: YaleApp = {
   id: "yalemoji",
-  name: "YaleMoji",
+  name: "Yalemoji",
   aliases: [],
   href: "https://yalemoji.com",
   image: "/apps-panel/yalemoji-waffle.png",

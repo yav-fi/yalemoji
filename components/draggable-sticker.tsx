@@ -19,7 +19,8 @@ export function DraggableSticker({
   children,
   onTap,
   ariaLabel,
-  pressed
+  pressed,
+  mass = 30
 }: {
   placement: StickerPlacement;
   className?: string;
@@ -28,6 +29,7 @@ export function DraggableSticker({
   onTap?: () => void;
   ariaLabel?: string;
   pressed?: boolean;
+  mass?: number;
 }) {
   const dragRef = useDraggableSticker<HTMLDivElement>({ onTap });
   const interactive = Boolean(onTap);
@@ -55,6 +57,9 @@ export function DraggableSticker({
       style={slotStyle}
     >
       <div
+        data-physics-body=""
+        data-mass-grams={mass}
+        data-draggable="true"
         aria-label={interactive ? ariaLabel : undefined}
         aria-pressed={interactive ? pressed : undefined}
         className={[styles.handle, handleClassName].filter(Boolean).join(" ")}

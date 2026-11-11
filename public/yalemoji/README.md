@@ -1,4 +1,4 @@
-# YaleMoji artwork
+# Yalemoji artwork
 
 This directory is a verbatim public copy of the SVG artwork in
 `Yalemoji/src/imports`.

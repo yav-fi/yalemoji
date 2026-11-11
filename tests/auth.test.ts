@@ -89,7 +89,7 @@ describe("Yalies assertion verification", () => {
   });
 });
 
-describe("YaleMoji sessions", () => {
+describe("Yalemoji sessions", () => {
   it("carries the verified first name into the signed session", () => {
     const token = createSessionToken("abc123", sessionSecret, now, "Alex");
     expect(verifySessionToken(token, sessionSecret, now + 1)).toEqual({ netid: "abc123", firstName: "Alex" });

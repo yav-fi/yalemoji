@@ -9,6 +9,7 @@ import {
   type AvatarSelections
 } from "@/config/avatar-options";
 import { hairPalettes, skinPalettes } from "@/config/avatar-palettes";
+import { hairSliderPalettes } from "./avatar-colors";
 import { avatarBackgroundOptions } from "@/config/avatar-backgrounds";
 
 export type AvatarConfig = {
@@ -18,6 +19,8 @@ export type AvatarConfig = {
   skinPaletteId: string;
   hairPaletteId: string;
   backgroundId: string;
+  skinColorPosition?: number;
+  hairColorPosition?: number;
 };
 
 const skinPaletteIds = new Set<string>(skinPalettes.map((palette) => palette.id));
@@ -30,6 +33,17 @@ const optionIdsByCategory: Record<AvatarCategory, Set<string>> = Object.fromEntr
     new Set(avatarOptions[category].map((option) => option.id))
   ])
 ) as Record<AvatarCategory, Set<string>>;
+
+function validPosition(value: unknown, count: number): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= count - 1;
+}
+
+function colorPositions(input: Record<string, unknown>) {
+  return {
+    ...(validPosition(input.skinColorPosition, skinPalettes.length) ? { skinColorPosition: input.skinColorPosition } : {}),
+    ...(validPosition(input.hairColorPosition, hairSliderPalettes.length) ? { hairColorPosition: input.hairColorPosition } : {})
+  };
+}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -69,7 +83,7 @@ function validAccessories(value: unknown): AccessorySelections | null {
   return result;
 }
 
-// Every saved or downloaded YaleMoji must include these. Drafts may be incomplete.
+// Every saved or downloaded Yalemoji must include these. Drafts may be incomplete.
 export const requiredFeatures = ["eyes", "mouth"] as const satisfies readonly AvatarCategory[];
 export type RequiredFeature = (typeof requiredFeatures)[number];
 
@@ -111,6 +125,7 @@ export function sanitizeAvatarConfig(input: unknown, defaults: AvatarConfig): Av
         : null,
     skinPaletteId: pick(input.skinPaletteId, skinPaletteIds, defaults.skinPaletteId),
     hairPaletteId: pick(input.hairPaletteId, hairPaletteIds, defaults.hairPaletteId),
+    ...colorPositions(input),
     backgroundId: pick(input.backgroundId, backgroundIds, defaults.backgroundId)
   };
 }
@@ -129,6 +144,8 @@ export function validateAvatarConfig(input: unknown): AvatarConfig | null {
     return null;
   }
 
+  if (input.skinColorPosition !== undefined && !validPosition(input.skinColorPosition, skinPalettes.length)) return null;
+  if (input.hairColorPosition !== undefined && !validPosition(input.hairColorPosition, hairSliderPalettes.length)) return null;
   const { skinPaletteId, hairPaletteId, backgroundId } = input;
   if (typeof skinPaletteId !== "string" || !skinPaletteIds.has(skinPaletteId)) return null;
   if (typeof hairPaletteId !== "string" || !hairPaletteIds.has(hairPaletteId)) return null;
@@ -140,6 +157,7 @@ export function validateAvatarConfig(input: unknown): AvatarConfig | null {
     facialHairId,
     skinPaletteId,
     hairPaletteId,
-    backgroundId
+    backgroundId,
+    ...colorPositions(input)
   };
 }

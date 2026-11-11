@@ -5,8 +5,8 @@ import { PublicSiteHeader } from "@/components/public-site-header";
 import { TrafficLogger } from "@/components/traffic-logger";
 
 export const metadata: Metadata = {
-  title: "Create your YaleMoji",
-  description: "One avatar. All your Yale apps. Create a YaleMoji that feels like you."
+  title: "Create your Yalemoji",
+  description: "One avatar. All your Yale apps. Create a Yalemoji that feels like you."
 };
 
 export default function CreatePage() {
