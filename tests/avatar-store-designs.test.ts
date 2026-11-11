@@ -1,6 +1,12 @@
 import type { Firestore } from "@google-cloud/firestore";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { deleteDesign, getAvatarId, getDesign, renameDesign } from "@/lib/avatar-store";
+import {
+  deleteDesign,
+  getAvatarId,
+  getDesign,
+  makeDesignCurrent,
+  renameDesign
+} from "@/lib/avatar-store";
 
 type Data = Record<string, unknown>;
 
@@ -54,12 +60,16 @@ function fakeFirestore(initial: Record<string, Data> = {}) {
       run: (transaction: {
         get: (ref: { path: string }) => Promise<ReturnType<typeof snapshot>>;
         delete: (ref: { path: string }) => void;
+        set: (ref: { path: string }, data: Data, options?: { merge?: boolean }) => void;
       }) => Promise<T>
     ) =>
       run({
         get: async (ref) => snapshot(ref.path),
         delete: (ref) => {
           docs.delete(ref.path);
+        },
+        set: (ref, data, options) => {
+          docs.set(ref.path, options?.merge ? { ...docs.get(ref.path), ...data } : data);
         }
       })
   };
@@ -70,6 +80,7 @@ function fakeFirestore(initial: Record<string, Data> = {}) {
 const version = {
   config: { selections: {} },
   pngUrl: "https://example.test/avatar.png",
+  svgUrl: "https://example.test/avatar.svg",
   backgroundUrl: "https://example.test/background.svg"
 };
 
@@ -130,6 +141,59 @@ describe("design store functions", () => {
       expect(error).toHaveBeenCalledWith(
         expect.objectContaining({ event: "asset_mark_failed", version: 4 })
       );
+    });
+  });
+
+  describe("makeDesignCurrent", () => {
+    const user = {
+      avatarVersion: 5,
+      versionCounter: 5,
+      pngUrl: "https://example.test/5/avatar.png",
+      svgUrl: "https://example.test/5/avatar.svg",
+      backgroundUrl: "https://example.test/5/background.svg"
+    };
+
+    it("points the live avatar at an older design's existing files", async () => {
+      const { db, docs } = fakeFirestore({
+        "users/abc123": user,
+        "users/abc123/avatars/2": version
+      });
+
+      await expect(makeDesignCurrent("abc123", 2, db)).resolves.toBe("ok");
+      expect(docs.get("users/abc123")).toMatchObject({
+        avatarVersion: 2,
+        versionCounter: 5,
+        pngUrl: version.pngUrl,
+        svgUrl: version.svgUrl,
+        backgroundUrl: version.backgroundUrl
+      });
+    });
+
+    it("returns not_found for a missing design and changes nothing", async () => {
+      const { db, docs } = fakeFirestore({ "users/abc123": user });
+
+      await expect(makeDesignCurrent("abc123", 2, db)).resolves.toBe("not_found");
+      expect(docs.get("users/abc123")).toEqual(user);
+    });
+
+    it("treats a damaged design as not found", async () => {
+      const { db, docs } = fakeFirestore({
+        "users/abc123": user,
+        "users/abc123/avatars/2": { config: { selections: {} }, pngUrl: version.pngUrl }
+      });
+
+      await expect(makeDesignCurrent("abc123", 2, db)).resolves.toBe("not_found");
+      expect(docs.get("users/abc123")).toEqual(user);
+    });
+
+    it("succeeds without writing when the design is already current", async () => {
+      const { db, docs } = fakeFirestore({
+        "users/abc123": user,
+        "users/abc123/avatars/5": version
+      });
+
+      await expect(makeDesignCurrent("abc123", 5, db)).resolves.toBe("ok");
+      expect(docs.get("users/abc123")).toEqual(user);
     });
   });
 

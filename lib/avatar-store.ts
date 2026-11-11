@@ -326,6 +326,52 @@ export async function deleteDesign(
   return result;
 }
 
+// Makes a saved design the live avatar by pointing the user's current-avatar
+// fields at that version's existing files. Nothing is re-rendered and no
+// version number is issued, so `avatarVersion` can move backwards.
+export async function makeDesignCurrent(
+  netid: string,
+  version: number,
+  db: Firestore = getFirestore()
+): Promise<"ok" | "not_found"> {
+  const userRef = db.collection("users").doc(netid);
+  const versionRef = userRef.collection("avatars").doc(String(version));
+
+  return db.runTransaction(async (transaction) => {
+    const versionSnapshot = await transaction.get(versionRef);
+    if (!versionSnapshot.exists) return "not_found" as const;
+    const pngUrl = versionSnapshot.get("pngUrl");
+    const svgUrl = versionSnapshot.get("svgUrl");
+    const backgroundUrl = versionSnapshot.get("backgroundUrl");
+    if (
+      typeof pngUrl !== "string" ||
+      typeof svgUrl !== "string" ||
+      typeof backgroundUrl !== "string"
+    ) {
+      return "not_found" as const;
+    }
+
+    const userSnapshot = await transaction.get(userRef);
+    const currentVersion = userSnapshot.exists
+      ? Number(userSnapshot.get("avatarVersion") ?? 0)
+      : 0;
+    if (currentVersion === version) return "ok" as const;
+
+    transaction.set(
+      userRef,
+      {
+        avatarVersion: version,
+        pngUrl,
+        svgUrl,
+        backgroundUrl,
+        updatedAt: FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+    return "ok" as const;
+  });
+}
+
 export async function getCurrentAvatar(
   netid: string,
   db: Firestore = getFirestore()
