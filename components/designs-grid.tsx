@@ -55,6 +55,7 @@ function DesignCard({
   });
 
   const url = `/api/designs/${version}`;
+  const helperId = `design-${version}-helper`;
 
   function setBusy(busy: boolean) {
     pendingRef.current = busy;
@@ -70,17 +71,19 @@ function DesignCard({
     focusNext.current = "input";
   }
 
-  function stopRename() {
+  // `refocus` is false when the user left the input by tabbing or clicking
+  // away: focus then stays where they put it.
+  function stopRename(refocus = true) {
     setError(null);
     setMode("view");
-    focusNext.current = "rename";
+    if (refocus) focusNext.current = "rename";
   }
 
-  async function submitRename() {
+  async function submitRename({ fromBlur = false } = {}) {
     if (pendingRef.current || cancelledRef.current) return;
     const next = draft.trim();
     if (next === "" || next === name) {
-      stopRename();
+      stopRename(!fromBlur);
       return;
     }
 
@@ -103,7 +106,7 @@ function DesignCard({
       // The name only changes once the server has confirmed it.
       onRenamed(version, saved);
       setBusy(false);
-      stopRename();
+      stopRename(!fromBlur);
     } catch {
       rejectedRef.current = next;
       setBusy(false);
@@ -124,6 +127,11 @@ function DesignCard({
     setBusy(true);
     try {
       const response = await fetch(url, { method: "DELETE" });
+      if (response.status === 404) {
+        // Already removed, e.g. in another tab.
+        onGone(version);
+        return;
+      }
       if (response.status !== 204) throw new Error("remove failed");
       // Stays busy: the card is about to be taken out of the grid.
       onRemoved(version);
@@ -165,7 +173,7 @@ function DesignCard({
           maxLength={MAX_DESIGN_NAME}
           onBlur={() => {
             if (rejectedRef.current !== null && draft.trim() === rejectedRef.current) return;
-            void submitRename();
+            void submitRename({ fromBlur: true });
           }}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -202,6 +210,7 @@ function DesignCard({
           </svg>
         </button>
         <button
+          aria-describedby={isCurrent ? helperId : undefined}
           aria-disabled={isCurrent ? true : undefined}
           aria-label={`Remove ${name}`}
           className={styles.iconButton}
@@ -250,7 +259,7 @@ function DesignCard({
       ) : null}
 
       {isCurrent ? (
-        <p className={styles.helper}>Current avatar: save a different design to remove this one.</p>
+        <p className={styles.helper} id={helperId}>Current avatar: save a different design to remove this one.</p>
       ) : null}
     </li>
   );
@@ -260,6 +269,10 @@ function DesignCard({
 // it never calls router.refresh().
 export function DesignsGrid({ designs: initialDesigns }: { designs: GridDesign[] }) {
   const [designs, setDesigns] = useState(initialDesigns);
+  // Read by takeOut, which can run after a later render (two removals in
+  // flight), so it must not use a stale closure's list.
+  const designsRef = useRef(designs);
+  designsRef.current = designs;
   const [announcement, setAnnouncement] = useState("");
   const links = useRef(new Map<number, HTMLAnchorElement>());
   const focusNext = useRef<number | "heading" | null>(null);
@@ -280,8 +293,9 @@ export function DesignsGrid({ designs: initialDesigns }: { designs: GridDesign[]
   // Takes a card out and moves focus to the next card, the previous one if it
   // was last, or the page heading if none is left.
   function takeOut(version: number, message: string) {
-    const index = designs.findIndex((design) => design.version === version);
-    const neighbour = designs[index + 1] ?? designs[index - 1];
+    const list = designsRef.current;
+    const index = list.findIndex((design) => design.version === version);
+    const neighbour = list[index + 1] ?? list[index - 1];
     focusNext.current = neighbour ? neighbour.version : "heading";
     setDesigns((current) => current.filter((design) => design.version !== version));
     setAnnouncement(message);

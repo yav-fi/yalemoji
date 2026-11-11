@@ -231,6 +231,84 @@ describe("DesignsGrid", () => {
     });
   });
 
+  describe("review fixes", () => {
+    it("saves on blur without pulling focus back to the Rename button", async () => {
+      const fetchMock = stubFetch(() => json(200, { name: "Park" }));
+      render(
+        <>
+          <DesignsGrid designs={fixtures()} />
+          <button type="button">Elsewhere</button>
+        </>
+      );
+      const input = startRename("Untitled 1", "Park");
+      const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
+      elsewhere.focus();
+      fireEvent.blur(input);
+
+      await screen.findByRole("link", { name: "Open Park" });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "Rename Park" })).not.toHaveFocus();
+    });
+
+    it("just exits when blurred with an unchanged name", () => {
+      const fetchMock = stubFetch(() => json(200, {}));
+      render(<DesignsGrid designs={fixtures()} />);
+      const input = startRename("Untitled 1", "Untitled 1");
+      fireEvent.blur(input);
+
+      expect(screen.queryByRole("textbox", { name: "Design name" })).not.toBeInTheDocument();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "Rename Untitled 1" })).not.toHaveFocus();
+    });
+
+    it("sends exactly one PATCH when Enter saves", async () => {
+      const fetchMock = stubFetch(() => json(200, { name: "Park" }));
+      render(<DesignsGrid designs={fixtures()} />);
+      const input = startRename("Untitled 1", "Park");
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      await screen.findByRole("link", { name: "Open Park" });
+      await act(async () => {});
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "Rename Park" })).toHaveFocus();
+    });
+
+    it("treats a 404 on remove as already gone", async () => {
+      stubFetch(() => new Response(null, { status: 404 }));
+      render(<DesignsGrid designs={fixtures()} />);
+      fireEvent.click(screen.getByRole("button", { name: "Remove Untitled 1" }));
+      fireEvent.click(within(card("Untitled 1")).getByRole("button", { name: "Remove" }));
+
+      await waitFor(() =>
+        expect(screen.queryByRole("link", { name: "Open Untitled 1" })).not.toBeInTheDocument()
+      );
+      expect(screen.getByRole("status")).toHaveTextContent("This design no longer exists.");
+      expect(screen.queryByText("Couldn't remove this design.")).not.toBeInTheDocument();
+    });
+
+    it("focuses the page heading when the last removable card is removed", async () => {
+      stubFetch(() => new Response(null, { status: 204 }));
+      render(
+        <>
+          <h1 id="designs-title" tabIndex={-1}>Designs</h1>
+          <DesignsGrid designs={[design(1, "Untitled 1")]} />
+        </>
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Remove Untitled 1" }));
+      fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+
+      await screen.findByText("No designs yet");
+      expect(screen.getByRole("heading", { name: "Designs" })).toHaveFocus();
+    });
+
+    it("links the current card's helper text to its Remove button", () => {
+      render(<DesignsGrid designs={fixtures()} />);
+      expect(screen.getByRole("button", { name: "Remove Beach day" })).toHaveAccessibleDescription(
+        "Current avatar: save a different design to remove this one."
+      );
+    });
+  });
+
   it("shows an empty state with a link to the editor", () => {
     render(<DesignsGrid designs={[]} />);
 
