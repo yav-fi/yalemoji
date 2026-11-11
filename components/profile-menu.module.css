@@ -178,3 +178,14 @@ a.dropdownItem:focus-visible {
   from { max-height: var(--profile-dropdown-max-height); opacity: 1; }
   to { max-height: 0; opacity: 0; }
 }
+
+/* Shown only where the navbar's text links are hidden (site-header.module.css). */
+.phoneOnly {
+  display: none;
+}
+
+@media (max-width: 43.75rem) {
+  .phoneOnly {
+    display: flex;
+  }
+}
