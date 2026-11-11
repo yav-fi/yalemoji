@@ -402,8 +402,10 @@ export function AvatarEditor({
       openedSerialized.current !== null && serializedConfig !== openedSerialized.current;
     if (!edited && !designNotFound) return;
     addressCleared.current = true;
-    router.replace("/editor", { scroll: false });
-  }, [serializedConfig, designNotFound, router]);
+    // Not router.replace: that would re-render the page without ?design, which
+    // changes the editor's key and remounts it mid-edit.
+    window.history.replaceState(null, "", "/editor");
+  }, [serializedConfig, designNotFound]);
 
   const selectedPalette = category === "hair" ? hairPalette : skinPalette;
   const options = avatarOptions[category];

@@ -6,8 +6,7 @@ import { writeDraft } from "@/lib/avatar-draft";
 import { normalizeAvatarSvg } from "@/lib/avatar-svg";
 
 const refresh = vi.hoisted(() => vi.fn());
-const replace = vi.hoisted(() => vi.fn());
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, replace }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 const beachDay: { version: number; name: string; config: AvatarConfig } = {
   version: 4,
@@ -33,7 +32,6 @@ function selectEyesAndMouth() {
 describe("AvatarEditor", () => {
   beforeEach(() => {
     refresh.mockClear();
-    replace.mockClear();
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
   });
 
@@ -315,8 +313,18 @@ describe("AvatarEditor", () => {
   });
 
   describe("opening a saved design", () => {
-    beforeEach(() => localStorage.clear());
-    afterEach(() => localStorage.clear());
+    // The address is cleared with history.replaceState, not router.replace: a
+    // router navigation would re-render the page and remount the editor.
+    let replaceState: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      localStorage.clear();
+      replaceState = vi.spyOn(window.history, "replaceState");
+    });
+    afterEach(() => {
+      localStorage.clear();
+      replaceState.mockRestore();
+    });
 
     it("shows the design and only clears the address on the first edit", () => {
       const { container } = render(<AvatarEditor initialDesign={beachDay} netid="abc123" />);
@@ -324,16 +332,17 @@ describe("AvatarEditor", () => {
       expect(container.querySelector('[data-category="eyes"]')).toBeInTheDocument();
       expect(screen.getByRole("status")).toHaveTextContent("Opened 'Beach day'");
       expect(screen.queryByRole("button", { name: "Bring back previous edits" })).not.toBeInTheDocument();
-      expect(replace).not.toHaveBeenCalled();
+      expect(replaceState).not.toHaveBeenCalled();
 
       fireEvent.click(screen.getByRole("tab", { name: "Eyebrows" }));
-      expect(replace).not.toHaveBeenCalled();
+      expect(replaceState).not.toHaveBeenCalled();
       fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 1" }));
-      expect(replace).toHaveBeenCalledTimes(1);
-      expect(replace).toHaveBeenCalledWith("/editor", { scroll: false });
+      expect(replaceState).toHaveBeenCalledTimes(1);
+      expect(replaceState).toHaveBeenCalledWith(null, "", "/editor");
 
       fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 2" }));
-      expect(replace).toHaveBeenCalledTimes(1);
+      expect(replaceState).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("tab", { name: "Eyebrows" })).toHaveAttribute("aria-selected", "true");
       expect(screen.getByRole("status")).toHaveTextContent("Opened 'Beach day'");
     });
 
@@ -358,7 +367,7 @@ describe("AvatarEditor", () => {
       render(<AvatarEditor designNotFound netid="abc123" />);
 
       expect(screen.getByRole("status")).toHaveTextContent("That design couldn't be found.");
-      expect(replace).toHaveBeenCalledWith("/editor", { scroll: false });
+      expect(replaceState).toHaveBeenCalledWith(null, "", "/editor");
     });
   });
 });
