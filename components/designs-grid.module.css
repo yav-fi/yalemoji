@@ -244,9 +244,11 @@
   color: var(--accent);
 }
 
+/* Its own full-width row, so the date and icon buttons keep their room. */
 .textButton {
-  margin-inline-end: auto;
-  padding: 0 var(--space-2);
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: none;

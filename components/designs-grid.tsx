@@ -221,17 +221,6 @@ function DesignCard({
       </div>
 
       <div className={styles.actions}>
-        {isCurrent ? null : (
-          <button
-            aria-label={`Make ${name} current`}
-            className={styles.textButton}
-            disabled={pending}
-            onClick={() => void makeCurrent()}
-            type="button"
-          >
-            Make current
-          </button>
-        )}
         <button
           aria-label={`Rename ${name}`}
           className={styles.iconButton}
@@ -259,6 +248,18 @@ function DesignCard({
           </svg>
         </button>
       </div>
+
+      {isCurrent ? null : (
+        <button
+          aria-label={`Make ${name} current`}
+          className={styles.textButton}
+          disabled={pending}
+          onClick={() => void makeCurrent()}
+          type="button"
+        >
+          Make current
+        </button>
+      )}
 
       {mode === "confirm" ? (
         <div className={styles.confirm}>
