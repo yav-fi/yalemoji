@@ -1,46 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
-import { checkDesignEditRateLimit, deleteDesign, renameDesign } from "@/lib/avatar-store";
-import { parseDesignVersion, validateDesignName } from "@/lib/designs";
+import { deleteDesign, renameDesign } from "@/lib/avatar-store";
+import { authorize, type RouteContext } from "@/lib/design-route";
+import { validateDesignName } from "@/lib/designs";
 
 export const runtime = "nodejs";
-
-type RouteContext = { params: Promise<{ version: string }> };
-
-// Shared by both methods: auth, then version, then rate limit. The netid only
-// ever comes from the session.
-async function authorize(
-  ctx: RouteContext
-): Promise<{ netid: string; version: number } | { response: NextResponse }> {
-  const user = await getCurrentUser();
-  if (!user) {
-    return { response: NextResponse.json({ error: "unauthenticated" }, { status: 401 }) };
-  }
-
-  const version = parseDesignVersion((await ctx.params).version);
-  if (version === null) {
-    return { response: NextResponse.json({ error: "not_found" }, { status: 404 }) };
-  }
-
-  let rateLimit: Awaited<ReturnType<typeof checkDesignEditRateLimit>>;
-  try {
-    rateLimit = await checkDesignEditRateLimit(user.netid);
-  } catch (error) {
-    // A Firestore failure here would otherwise escape as an unshaped 500.
-    console.error("Design edit rate limit failed", error);
-    return { response: NextResponse.json({ error: "server_error" }, { status: 500 }) };
-  }
-  if (!rateLimit.allowed) {
-    return {
-      response: NextResponse.json(
-        { error: "rate_limited", retryAfterSeconds: rateLimit.retryAfterSeconds },
-        { status: 429 }
-      )
-    };
-  }
-
-  return { netid: user.netid, version };
-}
 
 export async function PATCH(request: NextRequest, ctx: RouteContext) {
   const auth = await authorize(ctx);

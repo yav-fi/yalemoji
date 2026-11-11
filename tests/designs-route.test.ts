@@ -5,12 +5,14 @@ vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn(async () => ({ netid: "abc1
 vi.mock("@/lib/avatar-store", () => ({
   checkDesignEditRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 0 })),
   deleteDesign: vi.fn(async () => "ok"),
+  makeDesignCurrent: vi.fn(async () => "ok"),
   renameDesign: vi.fn(async () => "ok")
 }));
 
 const { DELETE, PATCH } = await import("@/app/api/designs/[version]/route");
+const { POST: MAKE_CURRENT } = await import("@/app/api/designs/[version]/current/route");
 const { getCurrentUser } = await import("@/lib/auth");
-const { checkDesignEditRateLimit, deleteDesign, renameDesign } = await import(
+const { checkDesignEditRateLimit, deleteDesign, makeDesignCurrent, renameDesign } = await import(
   "@/lib/avatar-store"
 );
 
@@ -164,5 +166,52 @@ describe("when the rate-limit check itself fails", () => {
     expect(deleteDesign).not.toHaveBeenCalled();
     vi.mocked(checkDesignEditRateLimit).mockReset();
     vi.mocked(checkDesignEditRateLimit).mockResolvedValue({ allowed: true, retryAfterSeconds: 0 });
+  });
+});
+
+describe("POST /api/designs/{version}/current", () => {
+  const currentRequest = (version = "2") =>
+    new NextRequest(`http://localhost/api/designs/${version}/current`, { method: "POST" });
+
+  it("requires a session", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValueOnce(null);
+    const response = await MAKE_CURRENT(currentRequest(), ctx("2"));
+    expect(response.status).toBe(401);
+    expect(makeDesignCurrent).not.toHaveBeenCalled();
+  });
+
+  it("applies the design-edit rate limit", async () => {
+    vi.mocked(checkDesignEditRateLimit).mockResolvedValueOnce({ allowed: false, retryAfterSeconds: 30 });
+    const response = await MAKE_CURRENT(currentRequest(), ctx("2"));
+    expect(response.status).toBe(429);
+    expect(makeDesignCurrent).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the design doesn't exist", async () => {
+    vi.mocked(makeDesignCurrent).mockResolvedValueOnce("not_found");
+    const response = await MAKE_CURRENT(currentRequest(), ctx("2"));
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "not_found" });
+  });
+
+  it("makes the session user's design current", async () => {
+    const response = await MAKE_CURRENT(currentRequest(), ctx("2"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ version: 2 });
+    expect(makeDesignCurrent).toHaveBeenCalledWith("abc123", 2);
+  });
+
+  it("treats a malformed version as not found without touching the store", async () => {
+    const response = await MAKE_CURRENT(currentRequest("007"), ctx("007"));
+    expect(response.status).toBe(404);
+    expect(makeDesignCurrent).not.toHaveBeenCalled();
+  });
+
+  it("returns a shaped 500 when the store fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(makeDesignCurrent).mockRejectedValueOnce(new Error("firestore down"));
+    const response = await MAKE_CURRENT(currentRequest(), ctx("2"));
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "server_error" });
   });
 });
