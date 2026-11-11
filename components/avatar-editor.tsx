@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   avatarBackgroundOptions,
@@ -29,12 +29,16 @@ import {
   DEFAULT_HAIR_PALETTE,
   DEFAULT_SKIN_PALETTE,
   defaultConfig,
-  defaultSelections,
   missingRequiredFeatures,
   type AvatarConfig,
   type RequiredFeature
 } from "@/lib/avatar-config";
-import { useAvatarDraft } from "@/lib/avatar-draft";
+import {
+  clearDraftBackup,
+  readDraftBackup,
+  serializeAvatarConfig,
+  useAvatarDraft
+} from "@/lib/avatar-draft";
 import {
   findOpaquePixelBounds,
   fitBoundsInsideSquare
@@ -282,17 +286,54 @@ function isRateLimitBody(body: unknown): body is { retryAfterSeconds: number } {
   );
 }
 
-export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
+// The one place config ids are turned into the editor's palette and background
+// objects, used for both the starting state and applyConfig.
+function configToState(config: AvatarConfig) {
+  return {
+    selections: config.selections,
+    accessories: config.accessories,
+    facialHairId: config.facialHairId,
+    skinPalette:
+      skinPalettes.find((palette) => palette.id === config.skinPaletteId) ?? DEFAULT_SKIN_PALETTE,
+    hairPalette:
+      hairPalettes.find((palette) => palette.id === config.hairPaletteId) ?? DEFAULT_HAIR_PALETTE,
+    backgroundOption:
+      avatarBackgroundOptions.find((option) => option.id === config.backgroundId) ??
+      defaultAvatarBackground
+  };
+}
+
+export function AvatarEditor({
+  netid,
+  initialDesign,
+  designNotFound
+}: {
+  netid?: string | null;
+  initialDesign?: { version: number; name: string; config: AvatarConfig };
+  designNotFound?: boolean;
+} = {}) {
   const router = useRouter();
+  const [initialState] = useState(() =>
+    configToState(initialDesign?.config ?? defaultConfig)
+  );
   const [category, setCategory] = useState<AvatarCategory>("face");
-  const [skinPalette, setSkinPalette] = useState<AvatarPalette>(DEFAULT_SKIN_PALETTE);
-  const [hairPalette, setHairPalette] = useState<AvatarPalette>(DEFAULT_HAIR_PALETTE);
+  const [skinPalette, setSkinPalette] = useState<AvatarPalette>(initialState.skinPalette);
+  const [hairPalette, setHairPalette] = useState<AvatarPalette>(initialState.hairPalette);
   const [backgroundOption, setBackgroundOption] =
-    useState<AvatarBackgroundOption>(defaultAvatarBackground);
+    useState<AvatarBackgroundOption>(initialState.backgroundOption);
   const [selections, setSelections] =
-    useState<AvatarSelections>(defaultSelections);
-  const [facialHairId, setFacialHairId] = useState<string | null>(null);
-  const [accessories, setAccessories] = useState<AccessorySelections>({});
+    useState<AvatarSelections>(initialState.selections);
+  const [facialHairId, setFacialHairId] = useState<string | null>(initialState.facialHairId);
+  const [accessories, setAccessories] = useState<AccessorySelections>(initialState.accessories);
+  // Captured on the first render so it survives the address being cleared.
+  const [notice] = useState<string | null>(() =>
+    initialDesign
+      ? `Opened '${initialDesign.name}'`
+      : designNotFound
+        ? "That design couldn't be found."
+        : null
+  );
+  const [backup, setBackup] = useState<AvatarConfig | null>(null);
   const [pendingAction, setPendingAction] = useState<PngAction | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -316,24 +357,53 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
   );
 
   function applyConfig(next: AvatarConfig) {
-    setSelections(next.selections);
-    setAccessories(next.accessories);
-    setFacialHairId(next.facialHairId);
-    setSkinPalette(
-      skinPalettes.find((palette) => palette.id === next.skinPaletteId) ?? DEFAULT_SKIN_PALETTE
-    );
-    setHairPalette(
-      hairPalettes.find((palette) => palette.id === next.hairPaletteId) ?? DEFAULT_HAIR_PALETTE
-    );
-    setBackgroundOption(
-      avatarBackgroundOptions.find((option) => option.id === next.backgroundId) ??
-        defaultAvatarBackground
-    );
+    const state = configToState(next);
+    setSelections(state.selections);
+    setAccessories(state.accessories);
+    setFacialHairId(state.facialHairId);
+    setSkinPalette(state.skinPalette);
+    setHairPalette(state.hairPalette);
+    setBackgroundOption(state.backgroundOption);
     setExportError(null);
     setSaved(false);
   }
 
-  useAvatarDraft({ config, defaults: defaultConfig, netid, onRestore: applyConfig });
+  useAvatarDraft({
+    config,
+    defaults: defaultConfig,
+    netid,
+    onRestore: applyConfig,
+    initial: initialDesign?.config
+  });
+
+  // Declared after the draft hook, whose mount effect writes the backup.
+  useEffect(() => {
+    if (initialDesign && netid) setBackup(readDraftBackup(netid, defaultConfig));
+    // Mount only: the editor is re-keyed when the opened design changes.
+  }, []);
+
+  function restoreBackup() {
+    if (!backup) return;
+    applyConfig(backup);
+    if (netid) clearDraftBackup(netid);
+    setBackup(null);
+  }
+
+  // Keep ?design=N until the first edit, so a reload reopens the same design.
+  // A design that wasn't found has nothing to reopen, so clear it right away.
+  const addressCleared = useRef(false);
+  const openedSerialized = useRef(
+    initialDesign ? serializeAvatarConfig(initialDesign.config) : null
+  );
+  const serializedConfig = serializeAvatarConfig(config);
+  useEffect(() => {
+    if (addressCleared.current) return;
+    const edited =
+      openedSerialized.current !== null && serializedConfig !== openedSerialized.current;
+    if (!edited && !designNotFound) return;
+    addressCleared.current = true;
+    router.replace("/editor", { scroll: false });
+  }, [serializedConfig, designNotFound, router]);
 
   const selectedPalette = category === "hair" ? hairPalette : skinPalette;
   const options = avatarOptions[category];
@@ -626,6 +696,32 @@ export function AvatarEditor({ netid }: { netid?: string | null } = {}) {
             {exportError ? (
               <div className={styles.footerStatus}>
                 <p className={styles.exportError} role="alert">{exportError}</p>
+              </div>
+            ) : notice ? (
+              <div className={styles.footerStatus}>
+                <p role="status" style={{ margin: 0, fontSize: 12, lineHeight: 1.3 }}>
+                  {notice}
+                  {backup ? (
+                    <>
+                      {" "}
+                      <button
+                        onClick={restoreBackup}
+                        style={{
+                          padding: 0,
+                          border: 0,
+                          background: "none",
+                          color: "inherit",
+                          font: "inherit",
+                          textDecoration: "underline",
+                          cursor: "pointer"
+                        }}
+                        type="button"
+                      >
+                        Bring back previous edits
+                      </button>
+                    </>
+                  ) : null}
+                </p>
               </div>
             ) : null}
           </div>

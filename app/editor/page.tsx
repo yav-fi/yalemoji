@@ -1,7 +1,9 @@
 import { AvatarEditor } from "@/components/avatar-editor";
 import { SiteHeader } from "@/components/site-header";
 import { getCurrentUser } from "@/lib/auth";
-import { getCurrentAvatar } from "@/lib/avatar-store";
+import { defaultConfig, sanitizeAvatarConfig } from "@/lib/avatar-config";
+import { getCurrentAvatar, getDesign } from "@/lib/avatar-store";
+import { parseDesignVersion } from "@/lib/designs";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { TrafficLogger } from "@/components/traffic-logger";
@@ -13,8 +15,8 @@ export default async function EditorPage({ searchParams }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await getCurrentUser();
+  const params = await searchParams;
   if (!user) {
-    const params = await searchParams;
     const context = new URLSearchParams();
     for (const key of ["ref", "mode"]) {
       const value = params[key];
@@ -24,6 +26,13 @@ export default async function EditorPage({ searchParams }: {
   }
 
   const avatar = await getCurrentAvatar(user.netid).catch(() => null);
+
+  // ?design=N opens a saved design as a working draft. Anything that isn't a
+  // usable design of this user's is reported as not found.
+  const hasDesignParam = params.design !== undefined;
+  const version = parseDesignVersion(params.design);
+  const design = version === null ? null : await getDesign(user.netid, version).catch(() => null);
+  const designConfig = design ? sanitizeAvatarConfig(design.config, defaultConfig) : null;
 
   return (
     <>
@@ -35,7 +44,15 @@ export default async function EditorPage({ searchParams }: {
         netid={user.netid}
       />
       <main>
-        <AvatarEditor netid={user.netid} />
+        {design && designConfig ? (
+          <AvatarEditor
+            initialDesign={{ version: design.version, name: design.name, config: designConfig }}
+            key={design.version}
+            netid={user.netid}
+          />
+        ) : (
+          <AvatarEditor designNotFound={hasDesignParam} netid={user.netid} />
+        )}
       </main>
     </>
   );

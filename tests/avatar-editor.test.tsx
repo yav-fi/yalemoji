@@ -1,10 +1,22 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AvatarEditor } from "@/components/avatar-editor";
+import { defaultConfig, type AvatarConfig } from "@/lib/avatar-config";
+import { writeDraft } from "@/lib/avatar-draft";
 import { normalizeAvatarSvg } from "@/lib/avatar-svg";
 
 const refresh = vi.hoisted(() => vi.fn());
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+const replace = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, replace }) }));
+
+const beachDay: { version: number; name: string; config: AvatarConfig } = {
+  version: 4,
+  name: "Beach day",
+  config: {
+    ...defaultConfig,
+    selections: { ...defaultConfig.selections, eyes: "eyes-2", mouth: "mouth-1" }
+  }
+};
 
 function chooseDownload(name: string) {
   fireEvent.click(screen.getByRole("button", { name: "Download" }));
@@ -21,6 +33,7 @@ function selectEyesAndMouth() {
 describe("AvatarEditor", () => {
   beforeEach(() => {
     refresh.mockClear();
+    replace.mockClear();
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
   });
 
@@ -299,5 +312,53 @@ describe("AvatarEditor", () => {
     const { container } = render(<AvatarEditor netid="xyz789" />);
     expect(container.querySelector('[data-category="brows"]')).not.toBeInTheDocument();
     localStorage.clear();
+  });
+
+  describe("opening a saved design", () => {
+    beforeEach(() => localStorage.clear());
+    afterEach(() => localStorage.clear());
+
+    it("shows the design and only clears the address on the first edit", () => {
+      const { container } = render(<AvatarEditor initialDesign={beachDay} netid="abc123" />);
+
+      expect(container.querySelector('[data-category="eyes"]')).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Opened 'Beach day'");
+      expect(screen.queryByRole("button", { name: "Bring back previous edits" })).not.toBeInTheDocument();
+      expect(replace).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("tab", { name: "Eyebrows" }));
+      expect(replace).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 1" }));
+      expect(replace).toHaveBeenCalledTimes(1);
+      expect(replace).toHaveBeenCalledWith("/editor", { scroll: false });
+
+      fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 2" }));
+      expect(replace).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("status")).toHaveTextContent("Opened 'Beach day'");
+    });
+
+    it("offers to bring back the edits that were replaced", () => {
+      writeDraft("abc123", {
+        ...defaultConfig,
+        selections: { ...defaultConfig.selections, brows: "brows-1" }
+      });
+
+      const { container } = render(<AvatarEditor initialDesign={beachDay} netid="abc123" />);
+      expect(container.querySelector('[data-category="brows"]')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Bring back previous edits" }));
+      expect(container.querySelector('[data-category="brows"]')).toBeInTheDocument();
+      expect(container.querySelector('[data-category="eyes"]')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Bring back previous edits" })
+      ).not.toBeInTheDocument();
+    });
+
+    it("says when the design couldn't be found and clears the address", () => {
+      render(<AvatarEditor designNotFound netid="abc123" />);
+
+      expect(screen.getByRole("status")).toHaveTextContent("That design couldn't be found.");
+      expect(replace).toHaveBeenCalledWith("/editor", { scroll: false });
+    });
   });
 });
