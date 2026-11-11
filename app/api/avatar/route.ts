@@ -6,9 +6,11 @@ import { uploadAvatarAssets } from "@/lib/avatar-storage";
 import {
   checkAvatarSaveRateLimit,
   commitAvatarVersion,
+  countDesigns,
   getAvatarId,
   reserveNextVersion
 } from "@/lib/avatar-store";
+import { defaultDesignName } from "@/lib/designs";
 
 export const runtime = "nodejs";
 
@@ -45,6 +47,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const avatarId = getAvatarId(user.netid);
+    const name = defaultDesignName(
+      await countDesigns(user.netid).catch((error) => {
+        console.error("Design count failed", error);
+        return null;
+      })
+    );
     const version = await reserveNextVersion(user.netid);
     const { svg, png, backgroundSvg } = await renderAvatarAssets(config);
     const { svgUrl, pngUrl, backgroundUrl } = await uploadAvatarAssets(
@@ -60,7 +68,8 @@ export async function POST(request: NextRequest) {
       config,
       pngUrl,
       svgUrl,
-      backgroundUrl
+      backgroundUrl,
+      name
     });
 
     return NextResponse.json({ version, pngUrl, svgUrl, backgroundUrl }, { status: 200 });
