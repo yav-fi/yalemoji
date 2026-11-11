@@ -1,4 +1,4 @@
-import { Storage } from "@google-cloud/storage";
+import { Storage, type Bucket } from "@google-cloud/storage";
 import { getFirestoreCredentials } from "./gcp-credentials";
 
 let storage: Storage | null = null;
@@ -50,4 +50,29 @@ export async function uploadAvatarAssets(
     pngUrl: `https://storage.googleapis.com/${bucket.name}/${prefix}/avatar.png`,
     backgroundUrl: `https://storage.googleapis.com/${bucket.name}/${prefix}/background.svg`
   };
+}
+
+// Stamps a removed design's files with customTime so the bucket lifecycle rule
+// (daysSinceCustomTime) deletes them after the grace period.
+export async function markAvatarAssetsForDeletion(
+  avatarId: string,
+  version: number,
+  bucket: Bucket = getStorageClient().bucket(getBucketName())
+): Promise<void> {
+  const prefix = `avatars/${avatarId}/${version}`;
+
+  await Promise.all(
+    ["avatar.svg", "avatar.png", "background.svg"].map(async (name) => {
+      const file = bucket.file(`${prefix}/${name}`);
+      try {
+        const [metadata] = await file.getMetadata();
+        // Cloud Storage refuses to move customTime backwards.
+        if (metadata.customTime) return;
+        await file.setMetadata({ customTime: new Date().toISOString() });
+      } catch (error) {
+        if ((error as { code?: unknown } | null)?.code === 404) return;
+        throw error;
+      }
+    })
+  );
 }
