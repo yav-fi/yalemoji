@@ -73,7 +73,6 @@ function DesignCard({
   });
 
   const url = `/api/designs/${version}`;
-  const helperId = `design-${version}-helper`;
 
   function setBusy(busy: boolean) {
     pendingRef.current = busy;
@@ -271,13 +270,15 @@ function DesignCard({
           </svg>
         </button>
         <button
-          aria-describedby={isCurrent ? helperId : undefined}
           aria-disabled={isCurrent ? true : undefined}
           aria-label={`Remove ${name}`}
           className={styles.iconButton}
           disabled={pending}
           onClick={askRemove}
           ref={removeRef}
+          // The only explanation for the disabled state: a hover tooltip, also
+          // read as the button's description.
+          title={isCurrent ? "Your current avatar can't be removed" : undefined}
           type="button"
         >
           <svg aria-hidden fill="none" height="18" viewBox="0 0 24 24" width="18">
@@ -317,10 +318,6 @@ function DesignCard({
         <p className={styles.error} role="alert">
           {error}
         </p>
-      ) : null}
-
-      {isCurrent ? (
-        <p className={styles.helper} id={helperId}>Current avatar: make another design current to remove this one.</p>
       ) : null}
     </li>
   );

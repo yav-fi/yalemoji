@@ -99,9 +99,7 @@ describe("DesignsGrid", () => {
         "true"
       );
       expect(current.getByRole("button", { name: "Make Beach day current" })).toHaveTextContent("Current");
-      expect(
-        current.getByText("Current avatar: make another design current to remove this one.")
-      ).toBeInTheDocument();
+      expect(screen.queryByText(/Current avatar:/)).not.toBeInTheDocument();
       expect(
         within(card("Untitled 1")).getByRole("button", { name: "Make Untitled 1 current" })
       ).toHaveAttribute("aria-pressed", "false");
@@ -322,11 +320,12 @@ describe("DesignsGrid", () => {
       expect(screen.getByRole("heading", { name: "Designs" })).toHaveFocus();
     });
 
-    it("links the current card's helper text to its Remove button", () => {
+    it("explains the current card's disabled Remove button in a tooltip", () => {
       render(<DesignsGrid designs={fixtures()} />);
       expect(screen.getByRole("button", { name: "Remove Beach day" })).toHaveAccessibleDescription(
-        "Current avatar: make another design current to remove this one."
+        "Your current avatar can't be removed"
       );
+      expect(screen.getByRole("button", { name: "Remove Untitled 1" })).not.toHaveAttribute("title");
     });
   });
 

@@ -57,8 +57,7 @@
 .open,
 .nameInput,
 .confirm,
-.error,
-.helper {
+.error {
   grid-column: 1 / -1;
 }
 
@@ -183,7 +182,6 @@
 }
 
 .confirm p,
-.helper,
 .error {
   margin: 0;
   font-size: var(--type-nav);
@@ -219,10 +217,6 @@
 .confirmActions .danger {
   border-color: var(--danger);
   color: var(--danger);
-}
-
-.helper {
-  color: var(--foreground-muted);
 }
 
 .empty {
