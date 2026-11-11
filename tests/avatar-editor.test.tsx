@@ -460,6 +460,51 @@ describe("AvatarEditor", () => {
       expect(screen.getByRole("status")).toHaveTextContent("Opened 'Beach day'");
     });
 
+    function recordFetches(respond: (url: string) => Response) {
+      const urls: string[] = [];
+      vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        urls.push(url);
+        return Promise.resolve(respond(url));
+      }));
+      return urls;
+    }
+    const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+
+    it("makes an unchanged opened design current instead of saving a copy", async () => {
+      const urls = recordFetches(() => ok({ version: 4 }));
+      render(<AvatarEditor initialDesign={beachDay} netid="abc123" />);
+
+      await act(async () => { fireEvent.click(screen.getByRole("tab", { name: "Finish" })); });
+
+      await screen.findByRole("heading", { name: "Your Yalemoji has been set!" });
+      expect(urls).toEqual(["/api/designs/4/current"]);
+      expect(refresh).toHaveBeenCalledOnce();
+    });
+
+    it("saves a new design once the opened design has been changed", async () => {
+      const urls = recordFetches(() => ok({ version: 5 }));
+      render(<AvatarEditor initialDesign={beachDay} netid="abc123" />);
+      fireEvent.change(screen.getByRole("slider", { name: "Skin color" }), { target: { value: "0.75" } });
+
+      await act(async () => { fireEvent.click(screen.getByRole("tab", { name: "Finish" })); });
+
+      await screen.findByRole("heading", { name: "Your Yalemoji has been set!" });
+      expect(urls).toEqual(["/api/avatar"]);
+    });
+
+    it("saves it as a new design if it was removed since it was opened", async () => {
+      const urls = recordFetches((url) =>
+        url === "/api/avatar" ? ok({ version: 5 }) : new Response(null, { status: 404 })
+      );
+      render(<AvatarEditor initialDesign={beachDay} netid="abc123" />);
+
+      await act(async () => { fireEvent.click(screen.getByRole("tab", { name: "Finish" })); });
+
+      await screen.findByRole("heading", { name: "Your Yalemoji has been set!" });
+      expect(urls).toEqual(["/api/designs/4/current", "/api/avatar"]);
+    });
+
     it("says when the design couldn't be found and clears the address", () => {
       render(<AvatarEditor designNotFound netid="abc123" />);
 

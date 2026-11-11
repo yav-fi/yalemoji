@@ -404,6 +404,23 @@ export function AvatarEditor({
       if (!writeDraft("local-editor-preview", config)) throw new Error("Could not save on this device. Browser storage is unavailable.");
       return;
     }
+    // An opened design that hasn't changed is made current as it is, rather
+    // than saved again as a copy.
+    if (initialDesign && openedSerialized.current === serializeAvatarConfig(config)) {
+      const current = await fetch(`/api/designs/${initialDesign.version}/current`, { method: "POST" });
+      if (current.ok) return;
+      if (current.status === 429) {
+        const body: unknown = await current.json().catch(() => null);
+        if (isRateLimitBody(body)) {
+          throw new Error(
+            `You're saving too often. Try again in about ${Math.ceil(body.retryAfterSeconds / 60)} minute(s).`
+          );
+        }
+      }
+      // Removed since it was opened: fall through and save it as a new design.
+      if (current.status !== 404) throw new Error("Your Yalemoji could not be saved.");
+    }
+
     const response = await fetch("/api/avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
