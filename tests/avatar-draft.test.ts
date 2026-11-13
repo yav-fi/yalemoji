@@ -3,9 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createInitialSelections } from "@/config/avatar-options";
 import type { AvatarConfig } from "@/lib/avatar-config";
 import {
+  clearDraftBackup,
   DRAFT_SCHEMA,
+  draftBackupKey,
   draftStorageKey,
   readDraft,
+  readDraftBackup,
   useAvatarDraft,
   writeDraft
 } from "@/lib/avatar-draft";
@@ -177,5 +180,94 @@ describe("useAvatarDraft", () => {
     act(() => vi.advanceTimersByTime(1000));
     expect(result.current).toBe("disabled");
     expect(setItem).not.toHaveBeenCalled();
+  });
+
+  describe("opening a design (initial)", () => {
+    const initial = makeConfig({ eyes: "eyes-2", mouth: "mouth-1" });
+
+    function renderOpened(netid: string | null = "abc123") {
+      const onRestore = vi.fn();
+      const hook = renderHook(
+        ({ config }) => useAvatarDraft({ config, defaults, netid, onRestore, initial }),
+        { initialProps: { config: initial } }
+      );
+      return { ...hook, onRestore };
+    }
+
+    it("backs up a different stored draft instead of restoring or overwriting it", () => {
+      const old = makeConfig({ brows: "brows-1" });
+      writeDraft("abc123", old);
+
+      const { onRestore, result, rerender } = renderOpened();
+      expect(onRestore).not.toHaveBeenCalled();
+      expect(result.current).toBe("opened");
+      expect(readDraftBackup("abc123", defaults)).toEqual(old);
+
+      act(() => vi.advanceTimersByTime(1000));
+      expect(readDraft("abc123", defaults)).toEqual(old);
+
+      const edited = makeConfig({ eyes: "eyes-2", mouth: "mouth-2" });
+      rerender({ config: edited });
+      expect(readDraft("abc123", defaults)).toEqual(old);
+      act(() => vi.advanceTimersByTime(300));
+      expect(readDraft("abc123", defaults)).toEqual(edited);
+      expect(readDraftBackup("abc123", defaults)).toEqual(old);
+    });
+
+    it("makes no backup when the stored draft equals the opened design", () => {
+      writeDraft("abc123", initial);
+      const { result } = renderOpened();
+      expect(result.current).toBe("opened");
+      expect(localStorage.getItem(draftBackupKey("abc123"))).toBeNull();
+      expect(readDraftBackup("abc123", defaults)).toBeNull();
+    });
+
+    it("clears a backup left over from an earlier open when this open makes none", () => {
+      // An earlier open backed up some edits that were never brought back...
+      localStorage.setItem(
+        draftBackupKey("abc123"),
+        JSON.stringify({ schema: 1, config: makeConfig({ hair: "hair-1" }), updatedAt: "" })
+      );
+      // ...and now a design is opened over a draft equal to it.
+      writeDraft("abc123", initial);
+
+      renderOpened();
+      expect(readDraftBackup("abc123", defaults)).toBeNull();
+    });
+
+    it("doesn't touch the main draft key while opening, so other tabs aren't notified", () => {
+      writeDraft("abc123", makeConfig({ brows: "brows-1" }));
+      const setItem = vi.spyOn(Storage.prototype, "setItem");
+
+      renderOpened();
+      act(() => vi.advanceTimersByTime(1000));
+
+      expect(setItem).toHaveBeenCalledWith(draftBackupKey("abc123"), expect.any(String));
+      expect(setItem).not.toHaveBeenCalledWith(draftStorageKey("abc123"), expect.anything());
+    });
+
+    it("still opens the design when storage is blocked", () => {
+      vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+        throw new Error("blocked");
+      });
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("blocked");
+      });
+
+      const { onRestore, result } = renderOpened();
+      expect(result.current).toBe("opened");
+      expect(onRestore).not.toHaveBeenCalled();
+      expect(readDraftBackup("abc123", defaults)).toBeNull();
+    });
+
+    it("clears the backup", () => {
+      writeDraft("abc123", makeConfig({ brows: "brows-1" }));
+      renderOpened();
+      expect(localStorage.getItem(draftBackupKey("abc123"))).not.toBeNull();
+
+      clearDraftBackup("abc123");
+      expect(localStorage.getItem(draftBackupKey("abc123"))).toBeNull();
+      expect(draftBackupKey("abc123")).toBe("yalemoji:draft-backup:v1:abc123");
+    });
   });
 });

@@ -19,11 +19,23 @@ type StoredDraft = {
   updatedAt: string;
 };
 
-export type DraftStatus = "loading" | "restored" | "fresh" | "unavailable" | "disabled";
+export type DraftStatus =
+  | "loading"
+  | "restored"
+  | "fresh"
+  | "opened"
+  | "unavailable"
+  | "disabled";
 export type DraftRestoreSource = "load" | "other-tab";
 
 export function draftStorageKey(netid: string) {
   return `yalemoji:draft:v${DRAFT_SCHEMA}:${netid}`;
+}
+
+// One slot per netid: the draft that was in storage when a saved design was
+// opened over it, so those edits can be brought back.
+export function draftBackupKey(netid: string) {
+  return `yalemoji:draft-backup:v${DRAFT_SCHEMA}:${netid}`;
 }
 
 // Fixed key order, so equal configs always serialize identically.
@@ -74,17 +86,37 @@ export function readDraft(
   return parseDraft(raw, defaults);
 }
 
-export function writeDraft(netid: string, config: AvatarConfig): boolean {
+function writeStoredDraft(key: string, config: AvatarConfig): boolean {
   const draft: StoredDraft = {
     schema: DRAFT_SCHEMA,
     config: JSON.parse(serializeAvatarConfig(config)),
     updatedAt: new Date().toISOString()
   };
   try {
-    window.localStorage.setItem(draftStorageKey(netid), JSON.stringify(draft));
+    window.localStorage.setItem(key, JSON.stringify(draft));
     return true;
   } catch {
     return false;
+  }
+}
+
+export function writeDraft(netid: string, config: AvatarConfig): boolean {
+  return writeStoredDraft(draftStorageKey(netid), config);
+}
+
+export function readDraftBackup(netid: string, defaults: AvatarConfig): AvatarConfig | null {
+  try {
+    return parseDraft(window.localStorage.getItem(draftBackupKey(netid)), defaults);
+  } catch {
+    return null;
+  }
+}
+
+export function clearDraftBackup(netid: string) {
+  try {
+    window.localStorage.removeItem(draftBackupKey(netid));
+  } catch {
+    // Nothing to clear if storage is unavailable.
   }
 }
 
@@ -100,22 +132,31 @@ export function clearDraft(netid: string) {
 // hydration), then autosaves `config` whenever it changes. Writes are held back
 // until the restore has run, so the default avatar shown on first render can
 // never overwrite a real draft. Without a netid, drafts are disabled.
+//
+// With `initial` (a saved design opened in the editor, whose state already
+// starts as `initial`), the stored draft is not restored. If it differs, it is
+// copied to the backup slot, and the main key is left alone until the first
+// edit, so other tabs aren't disturbed.
 export function useAvatarDraft({
   config,
   defaults,
   netid,
-  onRestore
+  onRestore,
+  initial
 }: {
   config: AvatarConfig;
   defaults: AvatarConfig;
   netid?: string | null;
   onRestore: (config: AvatarConfig, source: DraftRestoreSource) => void;
+  initial?: AvatarConfig;
 }): DraftStatus {
   const [status, setStatus] = useState<DraftStatus>(netid ? "loading" : "disabled");
   const serialized = serializeAvatarConfig(config);
 
-  const latest = useRef({ config, defaults, onRestore, serialized });
-  latest.current = { config, defaults, onRestore, serialized };
+  // `initial` is read from this ref only: the editor is re-keyed when the
+  // opened design changes, so it must not re-run the restore effect.
+  const latest = useRef({ config, defaults, onRestore, serialized, initial });
+  latest.current = { config, defaults, onRestore, serialized, initial };
   const loaded = useRef(false);
   const lastWritten = useRef<string | null>(null);
   const pendingWrite = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,11 +174,23 @@ export function useAvatarDraft({
     }
 
     const draft = readDraft(netid, latest.current.defaults);
-    if (draft === "unavailable") {
+    const { initial } = latest.current;
+    if (initial) {
+      const opened = serializeAvatarConfig(initial);
+      if (draft && draft !== "unavailable" && serializeAvatarConfig(draft) !== opened) {
+        writeStoredDraft(draftBackupKey(netid), draft);
+      } else {
+        // A backup left over from an earlier open isn't this open's previous
+        // edits, so it must not be offered.
+        clearDraftBackup(netid);
+      }
+      // The first edit autosaves as usual.
+      lastWritten.current = opened;
+      setStatus("opened");
+    } else if (draft === "unavailable") {
       setStatus("unavailable");
       return;
-    }
-    if (draft) {
+    } else if (draft) {
       lastWritten.current = serializeAvatarConfig(draft);
       skipNextAutosave.current = true;
       latest.current.onRestore(draft, "load");

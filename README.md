@@ -71,7 +71,7 @@ gcloud run deploy yalemoji \
 - `apiKeys/{keyId}` stores API keys for other apps, by SHA-256 hash of the key: `app`, `description`, `createdAt`, `revokedAt`.
 - `trafficPageViews/{autoId}` records visits to `/`, `/create`, and `/editor` with `ref`, IP hash, user agent, path, and timestamp. Known app names and aliases map to the canonical IDs in `config/yale-apps.ts` (for example `CourseTable` → `coursetable`, `Yale Menus` → `yalemeals`). Other campaign refs are preserved; missing refs are stored as `none`. Internal links and the login flow carry the normalized ref forward.
 - `users/{netid}` stores login/identity metadata (`firstSeenAt`, `lastLoginAt`, set on every login) and the current avatar pointer: `avatarId` (a non-reversible id derived from the netid, used in storage paths so they don't leak netids), `avatarVersion`, `pngUrl`, `svgUrl`, `backgroundUrl`, and `updatedAt`.
-- `users/{netid}/avatars/{version}` stores the full history: the canonical `config` (selections/accessories/palette/background ids) that produced that version, its asset URLs, and `createdAt`.
+- `users/{netid}/avatars/{version}` stores the full history: the canonical `config` (selections/accessories/palette/background ids) that produced that version, its asset URLs, `createdAt`, and `name` (1–60 characters; new saves are named `Untitled N`, and versions saved before names existed display as `Untitled {version}`). Users can rename a version, make any version their current avatar, or remove any version except the current one from `/designs`; removing deletes the document. Making a version current points `users/{netid}` at that version's existing files (`POST /api/designs/{version}/current`), with no re-render and no new version number.
 
 Duplicate submissions return success so the API cannot be used to enumerate emails.
 
@@ -83,6 +83,8 @@ The browser never uploads image bytes. The editor (`/editor`) submits the user's
 - `background.svg` — the chosen background rendered as a standalone, resolution-independent SVG (`preserveAspectRatio="none"`, gradients/patterns defined so they stay coherent when stretched to any aspect ratio, not just square). This is what lets the profile UI show the same background both as a small square swatch and stretched wide across the dropdown header, with no blur or distortion either way.
 
 All three are uploaded as **immutable, versioned** objects to Cloud Storage (`lib/avatar-storage.ts`) at `avatars/{avatarId}/{version}/{avatar.svg,avatar.png,background.svg}` with a one-year immutable `Cache-Control` header. Firestore then tracks the current version per netid (`lib/avatar-store.ts`).
+
+An object's contents never change, but its URL is not permanent: when a user removes a design, its three files are stamped with `customTime` and a bucket lifecycle rule deletes them 14 days later (`DESIGN_ASSET_GRACE_DAYS` in `lib/designs.ts` documents the period; the bucket rule enforces it, and the two must match). **A removed design's URLs stop working 14 days after removal, so apps should fetch `png_url` from the API rather than store it long term.** The current avatar can't be removed, and the lookup APIs only ever return the current version. A user can make an older design current again, so the `version` the lookup APIs return identifies a design and can go down as well as up; don't treat it as a timeline.
 
 Saves are rate-limited per netid (20/hour) — generous for iterative editing, but bounded.
 
@@ -144,6 +146,15 @@ gcloud storage buckets add-iam-policy-binding gs://your-bucket-name \
 ```
 
 Set `YALEMOJI_ASSETS_BUCKET=your-bucket-name` and `YALEMOJI_ASSET_ID_SECRET` (see `.env.example`). The Cloud Run/Vercel service account also needs `roles/storage.objectAdmin` (or a custom role with `storage.objects.create`) on the bucket.
+
+Removed designs' files are cleaned up by a lifecycle rule, which is a one-time operator step per bucket:
+
+```bash
+echo '{"rule":[{"action":{"type":"Delete"},"condition":{"daysSinceCustomTime":14}}]}' > lifecycle.json
+gcloud storage buckets update gs://your-bucket-name --lifecycle-file=lifecycle.json
+```
+
+The rule only matches objects that have a `customTime`, which the app sets when a design is removed, so current and saved designs are never touched. Setting it needs `storage.objects.update`, which `roles/storage.objectAdmin` already includes (add it to a custom role).
 
 ## Current Google Cloud Project
 

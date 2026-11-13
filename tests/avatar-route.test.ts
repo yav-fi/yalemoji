@@ -8,6 +8,7 @@ vi.mock("@/lib/avatar-storage", () => ({ uploadAvatarAssets: vi.fn() }));
 vi.mock("@/lib/avatar-store", () => ({
   checkAvatarSaveRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 0 })),
   commitAvatarVersion: vi.fn(),
+  countDesigns: vi.fn(async () => 2),
   getAvatarId: vi.fn(() => "avatar-id"),
   reserveNextVersion: vi.fn(async () => 1)
 }));
@@ -15,7 +16,9 @@ vi.mock("@/lib/avatar-store", () => ({
 const { POST } = await import("@/app/api/avatar/route");
 const { renderAvatarAssets } = await import("@/lib/avatar-render");
 const { uploadAvatarAssets } = await import("@/lib/avatar-storage");
-const { reserveNextVersion, commitAvatarVersion } = await import("@/lib/avatar-store");
+const { commitAvatarVersion, countDesigns, reserveNextVersion } = await import(
+  "@/lib/avatar-store"
+);
 
 function saveRequest(selections: Record<string, string | null>) {
   return new NextRequest("http://localhost/api/avatar", {
@@ -30,6 +33,21 @@ function saveRequest(selections: Record<string, string | null>) {
     })
   });
 }
+
+function mockSuccessfulRender() {
+  vi.mocked(renderAvatarAssets).mockResolvedValue({
+    svg: "<svg/>",
+    png: Buffer.from(""),
+    backgroundSvg: "<svg/>"
+  });
+  vi.mocked(uploadAvatarAssets).mockResolvedValue({
+    svgUrl: "s",
+    pngUrl: "p",
+    backgroundUrl: "b"
+  });
+}
+
+const completeSelections = { ...createInitialSelections(), eyes: "eyes-1", mouth: "mouth-1" };
 
 describe("POST /api/avatar", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -62,6 +80,12 @@ describe("POST /api/avatar", () => {
     expect(response.status).toBe(200);
     expect(reserveNextVersion).toHaveBeenCalledWith("abc123");
     expect(commitAvatarVersion).toHaveBeenCalledWith("abc123", 1, expect.objectContaining({ setAsCurrent: true }));
+    // The checkmark's save is both named for the Designs list and made current.
+    expect(commitAvatarVersion).toHaveBeenCalledWith(
+      "abc123",
+      1,
+      expect.objectContaining({ setAsCurrent: true, name: expect.stringMatching(/^Untitled/) })
+    );
   });
 
   it("generates and uploads a design without setting it as current", async () => {
@@ -74,5 +98,33 @@ describe("POST /api/avatar", () => {
     expect(renderAvatarAssets).toHaveBeenCalledWith(expect.objectContaining({ skinColorPosition: 0.51, hairColorPosition: 5.25 }));
     expect(uploadAvatarAssets).toHaveBeenCalledOnce();
     expect(commitAvatarVersion).toHaveBeenCalledWith("abc123", 1, expect.objectContaining({ setAsCurrent: false }));
+  });
+
+  it("names a new save from the number of existing designs", async () => {
+    mockSuccessfulRender();
+    const response = await POST(saveRequest(completeSelections));
+
+    expect(response.status).toBe(200);
+    expect(countDesigns).toHaveBeenCalledWith("abc123");
+    expect(commitAvatarVersion).toHaveBeenCalledWith(
+      "abc123",
+      1,
+      expect.objectContaining({ name: "Untitled 3" })
+    );
+  });
+
+  it("still saves, as Untitled, when the design count fails", async () => {
+    mockSuccessfulRender();
+    vi.mocked(countDesigns).mockRejectedValueOnce(new Error("count failed"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await POST(saveRequest(completeSelections));
+    error.mockRestore();
+
+    expect(response.status).toBe(200);
+    expect(commitAvatarVersion).toHaveBeenCalledWith(
+      "abc123",
+      1,
+      expect.objectContaining({ name: "Untitled" })
+    );
   });
 });

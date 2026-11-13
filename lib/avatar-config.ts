@@ -2,6 +2,7 @@ import {
   accessoryTypes,
   avatarCategories,
   avatarOptions,
+  createInitialSelections,
   facialHairOptions,
   findAccessoryOption,
   type AccessorySelections,
@@ -10,7 +11,7 @@ import {
 } from "@/config/avatar-options";
 import { hairPalettes, skinPalettes } from "@/config/avatar-palettes";
 import { hairSliderPalettes } from "./avatar-colors";
-import { avatarBackgroundOptions } from "@/config/avatar-backgrounds";
+import { avatarBackgroundOptions, defaultAvatarBackground } from "@/config/avatar-backgrounds";
 
 export type AvatarConfig = {
   selections: AvatarSelections;
@@ -21,6 +22,28 @@ export type AvatarConfig = {
   backgroundId: string;
   skinColorPosition?: number;
   hairColorPosition?: number;
+};
+
+export const DEFAULT_SKIN_PALETTE = skinPalettes[2];
+export const DEFAULT_HAIR_PALETTE = hairPalettes[0];
+
+// A new avatar starts with a face: the first eyes and mouth, the last brows.
+export function defaultSelections(): AvatarSelections {
+  const selections = createInitialSelections();
+  selections.hair = null;
+  selections.eyes = avatarOptions.eyes[0].id;
+  selections.brows = avatarOptions.brows[avatarOptions.brows.length - 1].id;
+  selections.mouth = avatarOptions.mouth[0].id;
+  return selections;
+}
+
+export const defaultConfig: AvatarConfig = {
+  selections: defaultSelections(),
+  accessories: {},
+  facialHairId: null,
+  skinPaletteId: DEFAULT_SKIN_PALETTE.id,
+  hairPaletteId: DEFAULT_HAIR_PALETTE.id,
+  backgroundId: defaultAvatarBackground.id
 };
 
 const skinPaletteIds = new Set<string>(skinPalettes.map((palette) => palette.id));

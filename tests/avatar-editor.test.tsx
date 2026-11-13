@@ -1,10 +1,22 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AvatarEditor } from "@/components/avatar-editor";
+import { defaultConfig, type AvatarConfig } from "@/lib/avatar-config";
+import { writeDraft } from "@/lib/avatar-draft";
 import { normalizeAvatarSvg } from "@/lib/avatar-svg";
 
 const refresh = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+
+const beachDay: { version: number; name: string; config: AvatarConfig } = {
+  version: 4,
+  name: "Beach day",
+  config: {
+    ...defaultConfig,
+    // Saved before color sliders existed: no slider positions.
+    selections: { ...defaultConfig.selections, eyes: "eyes-2", mouth: "mouth-1", brows: null }
+  }
+};
 
 function selectEyesAndMouth() {
   fireEvent.click(screen.getByRole("tab", { name: "Eyes" }));
@@ -369,5 +381,135 @@ describe("AvatarEditor", () => {
     expect(second.container.querySelector('[data-category="mouth"]')).toBeInTheDocument();
     second.unmount();
     localStorage.clear();
+  });
+
+  describe("opening a saved design", () => {
+    // The address is cleared with history.replaceState, not router.replace: a
+    // router navigation would re-render the page and remount the editor.
+    let replaceState: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      localStorage.clear();
+      // As if opened from the Designs page, arriving with a login ?ref.
+      window.history.pushState(null, "", "/editor?design=4&ref=yalies");
+      replaceState = vi.spyOn(window.history, "replaceState");
+    });
+    afterEach(() => {
+      localStorage.clear();
+      replaceState.mockRestore();
+      window.history.pushState(null, "", "/");
+    });
+
+    it("shows the design and only clears the address on the first edit", () => {
+      writeDraft("abc123", { ...defaultConfig, selections: { ...defaultConfig.selections, hair: "hair-1" } });
+      const { container } = render(<AvatarEditor initialDesign={beachDay} netid="abc123" />);
+      // Opening isn't an edit: the stored draft is untouched until one.
+      act(() => void 0);
+      expect(JSON.parse(localStorage.getItem("yalemoji:draft:v1:abc123")!).config.selections.hair).toBe("hair-1");
+
+      expect(container.querySelector('[data-category="eyes"]')).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Opened 'Beach day'");
+      // The different stored draft was backed up, so it's offered back.
+      expect(screen.getByRole("button", { name: "Bring back previous edits" })).toBeInTheDocument();
+      expect(replaceState).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("tab", { name: "Eyebrows" }));
+      expect(replaceState).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 1" }));
+      expect(replaceState).toHaveBeenCalledTimes(1);
+      // Only ?design is dropped; the path and other parameters are kept.
+      expect(replaceState).toHaveBeenCalledWith(null, "", "/editor?ref=yalies");
+
+      fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 2" }));
+      expect(replaceState).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("tab", { name: "Eyebrows" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("status")).toHaveTextContent("Opened 'Beach day'");
+    });
+
+    it("offers to bring back the edits that were replaced", () => {
+      writeDraft("abc123", {
+        ...defaultConfig,
+        selections: { ...defaultConfig.selections, brows: "brows-1" }
+      });
+
+      const { container } = render(<AvatarEditor initialDesign={beachDay} netid="abc123" />);
+      expect(container.querySelector('[data-category="brows"]')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Bring back previous edits" }));
+      expect(container.querySelector('[data-category="brows"]')).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Bring back previous edits" })
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Brought back your previous edits");
+    });
+
+    it("keeps its state when the page re-renders without ?design after Save", () => {
+      // After the first edit the address has no ?design, so router.refresh()
+      // renders the page's other branch. Both use key="editor", so React must
+      // keep this instance rather than remount it.
+      const { container, rerender } = render(
+        <AvatarEditor initialDesign={beachDay} key="editor" netid="abc123" />
+      );
+      fireEvent.click(screen.getByRole("tab", { name: "Eyebrows" }));
+      fireEvent.click(screen.getByRole("button", { name: "Select Eyebrows 1" }));
+
+      rerender(<AvatarEditor designNotFound={false} key="editor" netid="abc123" />);
+
+      expect(screen.getByRole("tab", { name: "Eyebrows" })).toHaveAttribute("aria-selected", "true");
+      expect(container.querySelector('[data-category="brows"]')).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Opened 'Beach day'");
+    });
+
+    function recordFetches(respond: (url: string) => Response) {
+      const urls: string[] = [];
+      vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        urls.push(url);
+        return Promise.resolve(respond(url));
+      }));
+      return urls;
+    }
+    const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+
+    it("makes an unchanged opened design current instead of saving a copy", async () => {
+      const urls = recordFetches(() => ok({ version: 4 }));
+      render(<AvatarEditor initialDesign={beachDay} netid="abc123" />);
+
+      await act(async () => { fireEvent.click(screen.getByRole("tab", { name: "Finish" })); });
+
+      await screen.findByRole("heading", { name: "Your Yalemoji has been set!" });
+      expect(urls).toEqual(["/api/designs/4/current"]);
+      expect(refresh).toHaveBeenCalledOnce();
+    });
+
+    it("saves a new design once the opened design has been changed", async () => {
+      const urls = recordFetches(() => ok({ version: 5 }));
+      render(<AvatarEditor initialDesign={beachDay} netid="abc123" />);
+      fireEvent.change(screen.getByRole("slider", { name: "Skin color" }), { target: { value: "0.75" } });
+
+      await act(async () => { fireEvent.click(screen.getByRole("tab", { name: "Finish" })); });
+
+      await screen.findByRole("heading", { name: "Your Yalemoji has been set!" });
+      expect(urls).toEqual(["/api/avatar"]);
+    });
+
+    it("saves it as a new design if it was removed since it was opened", async () => {
+      const urls = recordFetches((url) =>
+        url === "/api/avatar" ? ok({ version: 5 }) : new Response(null, { status: 404 })
+      );
+      render(<AvatarEditor initialDesign={beachDay} netid="abc123" />);
+
+      await act(async () => { fireEvent.click(screen.getByRole("tab", { name: "Finish" })); });
+
+      await screen.findByRole("heading", { name: "Your Yalemoji has been set!" });
+      expect(urls).toEqual(["/api/designs/4/current", "/api/avatar"]);
+    });
+
+    it("says when the design couldn't be found and clears the address", () => {
+      render(<AvatarEditor designNotFound netid="abc123" />);
+
+      expect(screen.getByRole("status")).toHaveTextContent("That design couldn't be found.");
+      expect(replaceState).toHaveBeenCalledWith(null, "", "/editor?ref=yalies");
+    });
   });
 });

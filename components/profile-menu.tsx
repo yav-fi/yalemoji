@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useId } from "react";
 import { useDropdown } from "./use-dropdown";
 import { ProfileMenuIcon } from "./profile-menu-icon";
+import type { ActivePage } from "./site-header";
 import styles from "./profile-menu.module.css";
 
 export function ProfileMenu({
@@ -18,7 +19,7 @@ export function ProfileMenu({
   avatarUrl: string | null;
   firstName?: string;
   netid: string | null;
-  activePage?: "home" | "editor" | "about" | "updates";
+  activePage?: ActivePage;
 }) {
   const { closeDropdown, closing, open, toggleDropdown, wrapperRef } = useDropdown();
   const dropdownId = useId();
@@ -86,6 +87,13 @@ export function ProfileMenu({
             )}
           </div>
           <div className={styles.menuItems}>
+            {netid ? (
+              // Phones only: the navbar's text links (Editor, Designs) are
+              // hidden at that width, so this is the way to reach Designs.
+              <Link aria-current={activePage === "designs" ? "page" : undefined} className={`${styles.dropdownItem} ${styles.phoneOnly}`} href="/designs" onClick={closeDropdown}>
+                <span className={styles.itemIcon}><ProfileMenuIcon name="designs" /></span> Designs
+              </Link>
+            ) : null}
             <Link aria-current={activePage === "about" ? "page" : undefined} className={styles.dropdownItem} href="/about" onClick={closeDropdown}>
               <span className={styles.itemIcon}><ProfileMenuIcon name="about" /></span> About
             </Link>

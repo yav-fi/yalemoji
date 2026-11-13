@@ -16,7 +16,7 @@ it.each([false, true])("saves the version and only promotes it when requested (%
     avatarId: "id", setAsCurrent,
     config: { selections: createInitialSelections(), accessories: {}, facialHairId: null,
       skinPaletteId: "1", hairPaletteId: "1", backgroundId: "solid-1", skinColorPosition: 0.51 },
-    pngUrl: "png", svgUrl: "svg", backgroundUrl: "background"
+    pngUrl: "png", svgUrl: "svg", backgroundUrl: "background", name: "Untitled 2"
   }, db);
   expect(set).toHaveBeenCalledWith(versionRef, expect.objectContaining({ config: expect.objectContaining({ skinColorPosition: 0.51 }) }), { merge: true });
   const promotions = set.mock.calls.filter(([ref]) => ref === userRef);

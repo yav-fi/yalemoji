@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   avatarBackgroundOptions,
@@ -27,11 +27,18 @@ import {
   type AvatarPalette
 } from "@/config/avatar-palettes";
 import {
+  defaultConfig,
   missingRequiredFeatures,
   type AvatarConfig,
   type RequiredFeature
 } from "@/lib/avatar-config";
-import { useAvatarDraft, writeDraft } from "@/lib/avatar-draft";
+import {
+  clearDraftBackup,
+  readDraftBackup,
+  serializeAvatarConfig,
+  useAvatarDraft,
+  writeDraft
+} from "@/lib/avatar-draft";
 import {
   findOpaquePixelBounds,
   fitBoundsInsideSquare
@@ -52,26 +59,28 @@ const EXPORT_SIZE = 1080;
 const EXPORT_AVATAR_SIZE = 900;
 type PngAction = "download-background" | "download-transparent" | "save";
 
-function initialSelections(): AvatarSelections {
-  const selections = createInitialSelections();
-  selections.hair = null;
-  selections.eyes = avatarOptions.eyes[0].id;
-  selections.brows = avatarOptions.brows[avatarOptions.brows.length - 1].id;
-  selections.mouth = avatarOptions.mouth[0].id;
-  return selections;
+// The one place a config becomes the editor's state, used for both the
+// starting state and applyConfig. Eyes and a mouth are always filled in.
+function configToState(config: AvatarConfig) {
+  return {
+    selections: {
+      ...config.selections,
+      eyes: config.selections.eyes ?? avatarOptions.eyes[0].id,
+      mouth: config.selections.mouth ?? avatarOptions.mouth[0].id
+    },
+    accessories: config.accessories,
+    facialHairId: config.facialHairId,
+    skinPosition:
+      config.skinColorPosition ??
+      Math.max(0, skinPalettes.findIndex((palette) => palette.id === config.skinPaletteId)),
+    hairPosition:
+      config.hairColorPosition ??
+      Math.max(0, hairSliderPalettes.findIndex((palette) => palette.id === config.hairPaletteId)),
+    backgroundOption:
+      avatarBackgroundOptions.find((option) => option.id === config.backgroundId) ??
+      defaultAvatarBackground
+  };
 }
-
-const DEFAULT_SKIN_PALETTE = skinPalettes[2];
-const DEFAULT_HAIR_PALETTE = hairPalettes[0];
-
-const defaultConfig: AvatarConfig = {
-  selections: initialSelections(),
-  accessories: {},
-  facialHairId: null,
-  skinPaletteId: DEFAULT_SKIN_PALETTE.id,
-  hairPaletteId: DEFAULT_HAIR_PALETTE.id,
-  backgroundId: defaultAvatarBackground.id
-};
 
 const requiredFeatureNames: Record<RequiredFeature, string> = {
   eyes: "eyes",
@@ -237,23 +246,39 @@ function isRateLimitBody(body: unknown): body is { retryAfterSeconds: number } {
   );
 }
 
-export function AvatarEditor({ netid, localPreview = false }: {
+export function AvatarEditor({
+  netid,
+  localPreview = false,
+  initialDesign,
+  designNotFound
+}: {
   netid?: string | null;
   localPreview?: boolean;
+  initialDesign?: { version: number; name: string; config: AvatarConfig };
+  designNotFound?: boolean;
 } = {}) {
   const router = useRouter();
   const panelBodyRef = useRef<HTMLDivElement>(null);
+  const [initialState] = useState(() => configToState(initialDesign?.config ?? defaultConfig));
   const [category, setCategory] = useState<AvatarCategory | "finish">("face");
-  const [skinPosition, setSkinPosition] = useState(2);
-  const [hairPosition, setHairPosition] = useState(0);
+  const [skinPosition, setSkinPosition] = useState(initialState.skinPosition);
+  const [hairPosition, setHairPosition] = useState(initialState.hairPosition);
   const skinPalette = useMemo(() => interpolatePalette(skinPalettes, skinPosition), [skinPosition]);
   const hairPalette = useMemo(() => interpolatePalette(hairSliderPalettes, hairPosition), [hairPosition]);
   const [backgroundOption, setBackgroundOption] =
-    useState<AvatarBackgroundOption>(defaultAvatarBackground);
-  const [selections, setSelections] =
-    useState<AvatarSelections>(initialSelections);
-  const [facialHairId, setFacialHairId] = useState<string | null>(null);
-  const [accessories, setAccessories] = useState<AccessorySelections>({});
+    useState<AvatarBackgroundOption>(initialState.backgroundOption);
+  const [selections, setSelections] = useState<AvatarSelections>(initialState.selections);
+  const [facialHairId, setFacialHairId] = useState<string | null>(initialState.facialHairId);
+  const [accessories, setAccessories] = useState<AccessorySelections>(initialState.accessories);
+  // Captured on the first render so it survives the address being cleared.
+  const [notice, setNotice] = useState<string | null>(() =>
+    initialDesign
+      ? `Opened '${initialDesign.name}'`
+      : designNotFound
+        ? "That design couldn't be found."
+        : null
+  );
+  const [backup, setBackup] = useState<AvatarConfig | null>(null);
   const [pendingAction, setPendingAction] = useState<PngAction | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [created, setCreated] = useState(false);
@@ -276,25 +301,63 @@ export function AvatarEditor({ netid, localPreview = false }: {
   );
 
   function applyConfig(next: AvatarConfig) {
-    setSelections({
-      ...next.selections,
-      eyes: next.selections.eyes ?? avatarOptions.eyes[0].id,
-      mouth: next.selections.mouth ?? avatarOptions.mouth[0].id
-    });
-    setAccessories(next.accessories);
-    setFacialHairId(next.facialHairId);
-    setSkinPosition(next.skinColorPosition ?? Math.max(0, skinPalettes.findIndex((palette) => palette.id === next.skinPaletteId)));
-    setHairPosition(next.hairColorPosition ?? Math.max(0, hairSliderPalettes.findIndex((palette) => palette.id === next.hairPaletteId)));
-    setBackgroundOption(
-      avatarBackgroundOptions.find((option) => option.id === next.backgroundId) ??
-        defaultAvatarBackground
-    );
+    const state = configToState(next);
+    setSelections(state.selections);
+    setAccessories(state.accessories);
+    setFacialHairId(state.facialHairId);
+    setSkinPosition(state.skinPosition);
+    setHairPosition(state.hairPosition);
+    setBackgroundOption(state.backgroundOption);
     setExportError(null);
     setCreated(false);
   }
 
+  // The opened design as the editor holds it (with slider positions filled
+  // in), so "unchanged" compares like with like.
+  const openedConfig = useRef(initialDesign ? config : undefined);
+
   const draftOwner = localPreview ? "local-editor-preview" : netid;
-  useAvatarDraft({ config, defaults: defaultConfig, netid: draftOwner, onRestore: applyConfig });
+  useAvatarDraft({
+    config,
+    defaults: defaultConfig,
+    netid: draftOwner,
+    onRestore: applyConfig,
+    initial: openedConfig.current
+  });
+
+  // Declared after the draft hook, whose mount effect writes the backup.
+  useEffect(() => {
+    if (initialDesign && draftOwner) setBackup(readDraftBackup(draftOwner, defaultConfig));
+    // Mount only: the opened design is fixed for this editor's lifetime.
+  }, []);
+
+  function restoreBackup() {
+    if (!backup) return;
+    applyConfig(backup);
+    if (draftOwner) clearDraftBackup(draftOwner);
+    setBackup(null);
+    setNotice("Brought back your previous edits");
+  }
+
+  // Keep ?design=N until the first edit, so a reload reopens the same design.
+  // A design that wasn't found has nothing to reopen, so clear it right away.
+  const addressCleared = useRef(false);
+  const openedSerialized = useRef(
+    openedConfig.current ? serializeAvatarConfig(openedConfig.current) : null
+  );
+  const serializedConfig = serializeAvatarConfig(config);
+  useEffect(() => {
+    if (addressCleared.current) return;
+    const edited =
+      openedSerialized.current !== null && serializedConfig !== openedSerialized.current;
+    if (!edited && !designNotFound) return;
+    addressCleared.current = true;
+    // Not router.replace, which would re-render the page mid-edit. Only
+    // ?design is removed; the path and any other parameters (ref, mode) stay.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("design");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [serializedConfig, designNotFound]);
 
   const selectedPalette = category === "hair" ? hairPalette : skinPalette;
   const options = category === "finish" ? [] : avatarOptions[category];
@@ -341,6 +404,23 @@ export function AvatarEditor({ netid, localPreview = false }: {
       if (!writeDraft("local-editor-preview", config)) throw new Error("Could not save on this device. Browser storage is unavailable.");
       return;
     }
+    // An opened design that hasn't changed is made current as it is, rather
+    // than saved again as a copy.
+    if (initialDesign && openedSerialized.current === serializeAvatarConfig(config)) {
+      const current = await fetch(`/api/designs/${initialDesign.version}/current`, { method: "POST" });
+      if (current.ok) return;
+      if (current.status === 429) {
+        const body: unknown = await current.json().catch(() => null);
+        if (isRateLimitBody(body)) {
+          throw new Error(
+            `You're saving too often. Try again in about ${Math.ceil(body.retryAfterSeconds / 60)} minute(s).`
+          );
+        }
+      }
+      // Removed since it was opened: fall through and save it as a new design.
+      if (current.status !== 404) throw new Error("Your Yalemoji could not be saved.");
+    }
+
     const response = await fetch("/api/avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -423,6 +503,19 @@ export function AvatarEditor({ netid, localPreview = false }: {
       </h1>
       <div aria-hidden className={styles.campus} />
       {localPreview && <p className={styles.previewNotice} role="status">Local editor preview · Saves stay on this device</p>}
+      {notice ? (
+        <p className={styles.previewNotice} role="status">
+          {notice}
+          {backup ? (
+            <>
+              {" · "}
+              <button className={styles.noticeAction} onClick={restoreBackup} type="button">
+                Bring back previous edits
+              </button>
+            </>
+          ) : null}
+        </p>
+      ) : null}
 
       <div className={styles.workspace}>
         <div className={styles.previewColumn}>

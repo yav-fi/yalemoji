@@ -596,3 +596,14 @@
 @media (prefers-reduced-motion: reduce) {
   .buttonSpinner { animation: none; }
 }
+
+/* "Bring back previous edits" inside the opened-design notice. */
+.noticeAction {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

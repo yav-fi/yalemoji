@@ -77,4 +77,29 @@ describe("SiteHeader", () => {
     expect(dropdownImages[0]).toHaveAttribute("src", backgroundUrl);
     expect(dropdownImages[1]).toHaveAttribute("src", avatarUrl);
   });
+
+  it("links to Designs next to Editor and marks it as the current page", () => {
+    render(
+      <SiteHeader activePage="designs" avatarBackgroundUrl={null} avatarUrl={null} netid="abc123" />
+    );
+
+    const designs = screen.getByRole("link", { name: "Designs" });
+    expect(designs).toHaveAttribute("href", "/designs");
+    expect(designs).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Editor" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("offers Designs in the profile menu for phones, where the navbar links are hidden", () => {
+    render(
+      <SiteHeader activePage="designs" avatarBackgroundUrl={null} avatarUrl={null} netid="abc123" />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Profile menu" }));
+
+    const dropdownId = screen.getByRole("button", { name: "Profile menu" }).getAttribute("aria-controls")!;
+    const item = within(document.getElementById(dropdownId)!).getByRole("link", { name: "Designs" });
+    expect(item).toHaveAttribute("href", "/designs");
+    expect(item).toHaveAttribute("aria-current", "page");
+    // Hidden above phone width by CSS; jsdom doesn't apply media queries.
+    expect(item.className).toMatch(/phoneOnly/);
+  });
 });
