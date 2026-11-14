@@ -8,6 +8,7 @@ import {
   innerSvg,
   namespaceAvatarSvg,
   normalizeAvatarSvg,
+  occludeAvatarSvg,
   replacePaletteVariables
 } from "@/lib/avatar-svg";
 import { hairSliderPalettes, interpolatePalette } from "./avatar-colors";
@@ -45,7 +46,10 @@ async function composeSubjectSvg(config: AvatarConfig) {
 
   const bodies = await Promise.all(
     layers.map(async (layer, index) => {
-      const markup = await loadAvatarSvgFromDisk(layer.src);
+      const source = await loadAvatarSvgFromDisk(layer.src);
+      const markup = layer.occludedBySrc
+        ? occludeAvatarSvg(source, await loadAvatarSvgFromDisk(layer.occludedBySrc), layer.offsetY)
+        : source;
       const palette =
         layer.palette === "skin"
           ? skinPalette

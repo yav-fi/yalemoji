@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { avatarBackgroundSvg } from "@/config/avatar-backgrounds";
 import { createInitialSelections } from "@/config/avatar-options";
 import type { AvatarConfig } from "@/lib/avatar-config";
+import { occludeAvatarSvg } from "@/lib/avatar-svg";
 import { renderAvatarAssets } from "@/lib/avatar-render";
 
 function baseConfig(): AvatarConfig {
@@ -31,6 +32,20 @@ async function cornerAlpha(png: Buffer) {
 }
 
 describe("renderAvatarAssets", () => {
+  it.each([1, 2, 3, 4, 5])("lowers the cross only for face options 2 and 4 (face %i)", async (face) => {
+    const config = baseConfig();
+    config.selections.face = `face-${face}`;
+    config.accessories = { earrings: "cross" };
+    const { svg } = await renderAvatarAssets(config);
+    expect(svg.includes('transform="translate(0 7)"')).toBe(face === 2 || face === 4);
+  });
+  it("exports the cross with face occlusion and no unresolved colors", async () => {
+    const { svg, png } = await renderAvatarAssets({ ...baseConfig(), accessories: { earrings: "cross" } });
+    expect(svg).toContain('<mask');
+    expect(svg).toContain('translate(15 -21)');
+    expect(svg).not.toContain('var(--avatar-');
+    expect(await cornerAlpha(png)).toBe(0);
+  });
   it("renders the exact interpolated skin and hair colors rather than their nearest stops", async () => {
     const { svg, png } = await renderAvatarAssets({ ...baseConfig(), skinColorPosition: 0.5, hairColorPosition: 0.5 });
     expect(svg).toContain("#f9d9c4");
@@ -102,4 +117,20 @@ describe("avatarBackgroundSvg", () => {
       expect(markup).toContain('preserveAspectRatio="none"');
     }
   });
+});
+
+it("draws jewelry over hair outlines while hiding it behind face fills and strokes", async () => {
+  const jewelry = '<svg viewBox="0 0 502 502"><path d="M0 250H502" stroke="#EFC000" stroke-width="10"/></svg>';
+  const face = '<svg><rect x="200" y="200" width="100" height="100" fill="var(--avatar-primary)" stroke="var(--avatar-secondary)" stroke-width="10"/></svg>';
+  const masked = occludeAvatarSvg(jewelry, face);
+  const canvas = createCanvas(502, 502);
+  const context = canvas.getContext("2d");
+  // Black hair outline beneath the masked necklace.
+  context.fillStyle = "black";
+  context.fillRect(0, 245, 502, 10);
+  context.drawImage(await loadImage(Buffer.from(masked)), 0, 0, 502, 502);
+  const pixel = (x: number) => [...context.getImageData(x, 250, 1, 1).data];
+  expect(pixel(100)).toEqual([239, 192, 0, 255]);
+  expect(pixel(250)).toEqual([0, 0, 0, 255]);
+  expect(pixel(197)).toEqual([0, 0, 0, 255]);
 });

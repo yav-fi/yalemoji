@@ -43,7 +43,7 @@ import {
   findOpaquePixelBounds,
   fitBoundsInsideSquare
 } from "@/lib/avatar-image-fit";
-import { innerSvg, namespaceAvatarSvg, replacePaletteVariables } from "@/lib/avatar-svg";
+import { innerSvg, namespaceAvatarSvg, occludeAvatarSvg, replacePaletteVariables } from "@/lib/avatar-svg";
 import {
   AvatarCanvas,
   createAvatarLayers
@@ -138,7 +138,10 @@ async function renderAvatarPng({
   const layers = createAvatarLayers(selections, accessories, facialHairId);
   const bodies = await Promise.all(
     layers.map(async (layer, index) => {
-      const markup = await loadAvatarSvg(layer.src);
+      const source = await loadAvatarSvg(layer.src);
+      const markup = layer.occludedBySrc
+        ? occludeAvatarSvg(source, await loadAvatarSvg(layer.occludedBySrc), layer.offsetY)
+        : source;
       const palette =
         layer.palette === "skin"
           ? skinPalette

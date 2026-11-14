@@ -59,3 +59,23 @@ export function innerSvg(markup: string) {
     .replace(/<\/svg>[\s\S]*/, "")
     .trim();
 }
+
+// A luminance mask keeps the accessory visible outside the face silhouette.
+// SourceAlpha includes both face fills and outlines, regardless of palette.
+export function occludeAvatarSvg(markup: string, occluder: string, offsetY = 0) {
+  const maskId = "avatar-face-mask";
+  const filterId = "avatar-face-silhouette";
+  const body = innerSvg(markup);
+  const positionedBody = offsetY ? `<g transform="translate(0 ${offsetY})">${body}</g>` : body;
+  const face = innerSvg(namespaceAvatarSvg(replacePaletteVariables(occluder, { id: "mask", primary: "#000000", secondary: "#000000" }), "occluder"));
+  return markup.replace(body, `<defs>
+    <filter id="${filterId}" filterUnits="userSpaceOnUse" x="0" y="0" width="502" height="502">
+      <feFlood flood-color="black"/>
+      <feComposite in2="SourceAlpha" operator="in"/>
+    </filter>
+    <mask id="${maskId}" maskUnits="userSpaceOnUse" x="0" y="0" width="502" height="502" style="mask-type:luminance">
+      <rect width="502" height="502" fill="white"/>
+      <g filter="url(#${filterId})">${face}</g>
+    </mask>
+  </defs><g mask="url(#${maskId})">${positionedBody}</g>`);
+}

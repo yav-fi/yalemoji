@@ -36,6 +36,24 @@ describe("AvatarEditor", () => {
     vi.unstubAllGlobals();
   });
 
+  it("offers the cross in Jewelry above Hair Clips and draws it over hair with face occlusion", () => {
+    const { container } = render(<AvatarEditor />);
+    fireEvent.click(screen.getByRole("tab", { name: "Hair" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select Hair 1" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Accessories" }));
+    const jewelry = screen.getByText("Jewelry");
+    const hairClips = screen.getByText("Hair Clips");
+    expect(jewelry.compareDocumentPosition(hairClips) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Select Cross" }));
+    const layers = [...container.querySelectorAll('[data-active="true"] [data-avatar-layer]')]
+      .map((layer) => layer.getAttribute("data-avatar-layer"));
+    expect(layers.indexOf("jewelry-back")).toBeGreaterThan(layers.indexOf("hair-back"));
+    expect(layers.indexOf("jewelry-back")).toBeGreaterThan(layers.indexOf("hair-front"));
+    fireEvent.click(screen.getByRole("button", { name: "Select Earrings 1" }));
+    expect(container.querySelector('[data-avatar-layer="jewelry-back"]')).not.toBeInTheDocument();
+    expect(container.querySelector('[data-avatar-layer="earrings"]')).toBeInTheDocument();
+  });
+
   it("shows colors for face and hair but not feature categories", () => {
     render(<AvatarEditor />);
 

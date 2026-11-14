@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { namespaceAvatarSvg, normalizeAvatarSvg } from "@/lib/avatar-svg";
+import { namespaceAvatarSvg, normalizeAvatarSvg, occludeAvatarSvg } from "@/lib/avatar-svg";
 import styles from "./avatar-layer.module.css";
 
 const svgCache = new Map<string, Promise<string>>();
@@ -18,7 +18,12 @@ export function loadAvatarSvg(src: string) {
   return request;
 }
 
-export function AvatarLayer({ fit = false, src }: { fit?: boolean; src: string }) {
+export function AvatarLayer({ fit = false, src, occludedBySrc, offsetY = 0 }: {
+  fit?: boolean;
+  src: string;
+  occludedBySrc?: string;
+  offsetY?: number;
+}) {
   const id = useId().replace(/[^a-z0-9]/gi, "");
   const [svg, setSvg] = useState<string | null>(null);
   const [fittedSvg, setFittedSvg] = useState<{ source: string; markup: string } | null>(null);
@@ -30,9 +35,9 @@ export function AvatarLayer({ fit = false, src }: { fit?: boolean; src: string }
     setSvg(null);
     setFailed(false);
 
-    loadAvatarSvg(src).then(
-      (markup) => {
-        if (active) setSvg(namespaceAvatarSvg(markup, id));
+    Promise.all([loadAvatarSvg(src), occludedBySrc ? loadAvatarSvg(occludedBySrc) : null]).then(
+      ([markup, occluder]) => {
+        if (active) setSvg(namespaceAvatarSvg(occluder ? occludeAvatarSvg(markup, occluder, offsetY) : markup, id));
       },
       () => {
         if (active) setFailed(true);
@@ -42,7 +47,7 @@ export function AvatarLayer({ fit = false, src }: { fit?: boolean; src: string }
     return () => {
       active = false;
     };
-  }, [id, src]);
+  }, [id, src, occludedBySrc, offsetY]);
 
   useLayoutEffect(() => {
     if (!fit || !svg || !layerRef.current) return;

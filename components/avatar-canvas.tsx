@@ -14,8 +14,11 @@ import styles from "./avatar-canvas.module.css";
 export type AvatarLayerDescriptor = {
   key: string;
   palette?: "hair" | "skin";
+  occludedBySrc?: string;
+  offsetY?: number;
   slot:
     | "hair-back"
+    | "jewelry-back"
     | "face"
     | "cheeks"
     | "mouth"
@@ -72,8 +75,19 @@ export function createAvatarLayers(
   add("facial-hair", facialHair?.src, "hair");
   add("nose", fixedNoseSrc, "skin");
   add("crest", crest?.src);
-  add("earrings", earrings?.src);
+  if (!earrings?.behindFace) add("earrings", earrings?.src);
   add("hair-front", hair?.frontSrc, "hair");
+  // Long hairstyles can include their lower outline in the front asset.
+  // Draw necklaces over that outline, masking out the face to keep them behind it.
+  if (earrings?.behindFace) {
+    layers.push({
+      key: `jewelry-back-${earrings.src}`,
+      slot: "jewelry-back",
+      src: earrings.src,
+      occludedBySrc: face?.src,
+      offsetY: earrings.id === "cross" && (face?.id === "face-2" || face?.id === "face-4") ? 7 : 0
+    });
+  }
   add("brows", brows?.src);
   add("eyes", eyes?.src);
   add("eyewear", eyewear?.src);
@@ -113,7 +127,7 @@ export function AvatarCanvas({
           data-palette={layer.palette}
           key={layer.key}
         >
-          <AvatarLayer src={layer.src} />
+          <AvatarLayer src={layer.src} occludedBySrc={layer.occludedBySrc} offsetY={layer.offsetY} />
         </div>
       ))}
     </div>

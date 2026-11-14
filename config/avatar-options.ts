@@ -11,6 +11,7 @@ export const avatarCategories = [
 export type AvatarCategory = (typeof avatarCategories)[number];
 
 export type AvatarOption = {
+  behindFace?: boolean;
   backSrc?: `/yalemoji/${string}.svg`;
   default?: boolean;
   frontSrc?: `/yalemoji/${string}.svg`;
@@ -24,8 +25,8 @@ export type AvatarSelections = Record<AvatarCategory, string | null>;
 export const accessoryTypes = [
   "eyewear",
   "cheeks",
-  "hairClips",
   "earrings",
+  "hairClips",
   "crest"
 ] as const;
 
@@ -89,6 +90,10 @@ const hairOptions: readonly AvatarOption[] = (() => {
   }));
 })();
 
+const earringOptions = numberedOptions(
+  "earrings", "Earrings", "Accessories", "ear", [1, 2, 3]
+);
+
 export const accessoryGroups = [
   {
     id: "eyewear",
@@ -113,6 +118,20 @@ export const accessoryGroups = [
     )
   },
   {
+    id: "earrings",
+    label: "Jewelry",
+    options: [
+      ...earringOptions.slice(0, 2),
+      {
+        id: "cross",
+        label: "Cross",
+        src: "/yalemoji/Accessories/cross.svg",
+        behindFace: true
+      },
+      ...earringOptions.slice(2)
+    ]
+  },
+  {
     id: "hairClips",
     label: "Hair Clips",
     options: numberedOptions(
@@ -121,17 +140,6 @@ export const accessoryGroups = [
       "Accessories",
       "hair",
       [1, 2, 3, 4]
-    )
-  },
-  {
-    id: "earrings",
-    label: "Earrings",
-    options: numberedOptions(
-      "earrings",
-      "Earrings",
-      "Accessories",
-      "ear",
-      [1, 2, 3]
     )
   },
   {
@@ -211,7 +219,7 @@ export function findAvatarOption(
 export function findAccessoryOption(
   type: AccessoryType,
   id: string | undefined
-) {
+): AvatarOption | null {
   if (!id) return null;
   return (
     accessoryGroups
