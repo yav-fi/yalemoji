@@ -19,35 +19,32 @@
 .page::after {
   content: "";
   position: absolute;
+  inset: 0;
   pointer-events: none;
+  background-repeat: no-repeat;
 }
 
 .page::before {
   z-index: -2;
-  top: 50%;
-  left: 50%;
-  width: 150vmax;
-  height: 150vmax;
-  background: conic-gradient(
-    from 125deg,
-    var(--gradient-blue),
-    var(--gradient-middle),
-    var(--gradient-teal),
-    var(--gradient-middle),
-    var(--gradient-blue)
-  );
-  transform: translate(-50%, -50%);
-  animation: gradientRotate 48s linear infinite;
+  background-image:
+    radial-gradient(ellipse at center, var(--gradient-blue) 10%, transparent 65%),
+    radial-gradient(ellipse at center, var(--gradient-teal) 10%, transparent 65%),
+    radial-gradient(ellipse at center, var(--gradient-middle), transparent 70%);
+  /* Oversized color fields always cover the page; only their positions move. */
+  background-size: 180% 160%, 160% 180%, 200% 140%;
+  background-position: 0% 20%, 100% 80%, 40% 60%;
+  animation: gradientFlow 28s ease-in-out -7s infinite;
 }
 
 .page::after {
   z-index: -1;
-  inset: -20%;
-  background:
-    radial-gradient(ellipse at 20% 30%, rgb(255 255 255 / 22%), transparent 55%),
-    radial-gradient(ellipse at 80% 70%, rgb(40 180 170 / 24%), transparent 55%),
-    radial-gradient(ellipse at 65% 15%, rgb(33 106 184 / 20%), transparent 50%);
-  animation: gradientDrift 19s ease-in-out infinite alternate;
+  background-image:
+    radial-gradient(ellipse at center, rgb(255 255 255 / 22%), transparent 60%),
+    radial-gradient(ellipse at center, rgb(40 180 170 / 24%), transparent 60%),
+    radial-gradient(ellipse at center, rgb(33 106 184 / 20%), transparent 60%);
+  background-size: 150% 180%, 180% 150%, 160% 170%;
+  background-position: 80% 10%, 10% 70%, 70% 90%;
+  animation: gradientShimmer 37s ease-in-out -13s infinite;
 }
 
 .scene {
@@ -109,13 +106,17 @@
   outline-offset: var(--focus-offset);
 }
 
-@keyframes gradientRotate {
-  to { transform: translate(-50%, -50%) rotate(360deg); }
+@keyframes gradientFlow {
+  0%, 100% { background-position: 0% 20%, 100% 80%, 40% 60%; }
+  25% { background-position: 70% 0%, 20% 100%, 100% 30%; }
+  50% { background-position: 100% 80%, 0% 20%, 60% 0%; }
+  75% { background-position: 30% 100%, 80% 0%, 0% 80%; }
 }
 
-@keyframes gradientDrift {
-  from { transform: translate(-4%, -3%) scale(1); opacity: 0.65; }
-  to { transform: translate(4%, 3%) scale(1.12); opacity: 1; }
+@keyframes gradientShimmer {
+  0%, 100% { background-position: 80% 10%, 10% 70%, 70% 90%; opacity: 0.75; }
+  33% { background-position: 10% 60%, 80% 100%, 30% 0%; opacity: 1; }
+  66% { background-position: 60% 100%, 100% 10%, 0% 50%; opacity: 0.65; }
 }
 
 @keyframes gradientText {
