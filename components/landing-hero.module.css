@@ -46,6 +46,18 @@
   object-fit: contain;
 }
 
+.wordmarkDark {
+  display: none;
+}
+
+:global(:root[data-theme="dark"]) .wordmarkLight {
+  display: none;
+}
+
+:global(:root[data-theme="dark"]) .wordmarkDark {
+  display: block;
+}
+
 .cta {
   display: flex;
   align-items: center;

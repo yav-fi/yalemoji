@@ -68,10 +68,19 @@ export function LandingHero() {
           <Image
             alt="YaleMoji"
             draggable={false}
-            className={styles.wordmarkImage}
+            className={`${styles.wordmarkImage} ${styles.wordmarkLight}`}
             height={127}
             priority
             src="/assets/yalemoji.svg"
+            width={465}
+          />
+          <Image
+            alt="YaleMoji"
+            draggable={false}
+            className={`${styles.wordmarkImage} ${styles.wordmarkDark}`}
+            height={127}
+            priority
+            src="/assets/yalemoji-dark.svg"
             width={465}
           />
         </div>

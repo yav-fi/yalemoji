@@ -77,10 +77,10 @@ export function ProfileMenu({
               <Image
                 alt=""
                 className={styles.faceLayer}
-                height={80}
+                height={104}
                 src={avatarUrl}
                 unoptimized
-                width={80}
+                width={104}
               />
             ) : (
               <span aria-hidden="true" className={styles.initials}>{initials}</span>

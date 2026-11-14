@@ -84,6 +84,10 @@
   color: var(--accent-foreground);
 }
 
+.identityHeader:not(.initialsHeader) {
+  padding: 0.125rem 1rem;
+}
+
 :global(:root[data-theme="dark"]) .identityHeader {
   background: #216ab8;
   color: #fff;
@@ -166,6 +170,10 @@ a.dropdownItem:focus-visible {
 @media (max-width: 767.5px) {
   .identityHeader {
     min-height: 10.5rem;
+  }
+
+  .identityHeader:not(.initialsHeader) {
+    --profile-menu-avatar-width: 10rem;
   }
 }
 
