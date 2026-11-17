@@ -36,21 +36,29 @@ describe("AvatarEditor", () => {
     vi.unstubAllGlobals();
   });
 
-  it("offers the cross in Jewelry above Hair Clips and draws it over hair with face occlusion", () => {
+  it("offers necklaces separately from ear pieces and keeps both wearable together", () => {
     const { container } = render(<AvatarEditor />);
     fireEvent.click(screen.getByRole("tab", { name: "Hair" }));
     fireEvent.click(screen.getByRole("button", { name: "Select Hair 1" }));
     fireEvent.click(screen.getByRole("tab", { name: "Accessories" }));
-    const jewelry = screen.getByText("Jewelry");
+    const earPieces = screen.getByRole("heading", { name: "Ear Pieces" });
+    const necklaces = screen.getByRole("heading", { name: "Necklaces" });
     const hairClips = screen.getByText("Hair Clips");
-    expect(jewelry.compareDocumentPosition(hairClips) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Select Cross" }));
-    const layers = [...container.querySelectorAll('[data-active="true"] [data-avatar-layer]')]
-      .map((layer) => layer.getAttribute("data-avatar-layer"));
-    expect(layers.indexOf("jewelry-back")).toBeGreaterThan(layers.indexOf("hair-back"));
-    expect(layers.indexOf("jewelry-back")).toBeGreaterThan(layers.indexOf("hair-front"));
+    expect(earPieces.compareDocumentPosition(necklaces) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(necklaces.compareDocumentPosition(hairClips) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Select Earrings 1" }));
-    expect(container.querySelector('[data-avatar-layer="jewelry-back"]')).not.toBeInTheDocument();
+    for (const name of ["Cross", "Circle", "Star"]) {
+      fireEvent.click(screen.getByRole("button", { name: `Select ${name}` }));
+      const layers = [...container.querySelectorAll('[data-active="true"] [data-avatar-layer]')]
+        .map((layer) => layer.getAttribute("data-avatar-layer"));
+      expect(layers.filter((slot) => slot === "necklace")).toHaveLength(1);
+      expect(layers.indexOf("necklace")).toBeGreaterThan(layers.indexOf("hair-back"));
+      expect(layers.indexOf("necklace")).toBeGreaterThan(layers.indexOf("hair-front"));
+      expect(screen.getByRole("button", { name: "Select Earrings 1" })).toHaveAttribute("aria-pressed", "true");
+      expect(container.querySelector('[data-avatar-layer="earrings"]')).toBeInTheDocument();
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Select Star" }));
+    expect(container.querySelector('[data-avatar-layer="necklace"]')).not.toBeInTheDocument();
     expect(container.querySelector('[data-avatar-layer="earrings"]')).toBeInTheDocument();
   });
 
@@ -176,7 +184,7 @@ describe("AvatarEditor", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Accessories" }));
     expect(screen.getByRole("heading", { name: "Eyewear" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "College Crest" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Select Eyewear/ })).toHaveLength(4);
+    expect(screen.getAllByRole("button", { name: /Select Eyewear/ })).toHaveLength(6);
     expect(screen.getAllByRole("button", { name: /Select College crest/ })).toHaveLength(15);
 
     fireEvent.click(screen.getByRole("button", { name: "Select Eyewear 1" }));

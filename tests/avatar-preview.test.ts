@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createPreviewConfig, nextPreviewConfig, previewLayerSources } from "@/lib/avatar-preview";
 import { validateAvatarConfig } from "@/lib/avatar-config";
 import { findReferringApp, yaleApps } from "@/config/yale-apps";
+import { accessoryTypes } from "@/config/avatar-options";
 
 describe("avatar preview", () => {
   it("changes at least three choices per step while keeping the avatar valid", () => {
@@ -12,7 +13,7 @@ describe("avatar preview", () => {
       const next = nextPreviewConfig(config, tick, () => (tick % 10) / 10);
       const choices = (value: typeof config) => ({
         ...value.selections,
-        ...Object.fromEntries(["eyewear", "cheeks", "hairClips", "earrings", "crest"].map((key) => [key, value.accessories[key as keyof typeof value.accessories]])),
+        ...Object.fromEntries(accessoryTypes.map((key) => [key, value.accessories[key]])),
         skin: value.skinPaletteId,
         hairColor: value.hairPaletteId,
         backgroundColor: value.backgroundId,

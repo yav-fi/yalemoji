@@ -91,11 +91,18 @@ function validSelections(value: unknown): AvatarSelections | null {
   return result;
 }
 
+// Older saved designs and drafts stored the cross in the earrings slot.
+function migrateAccessories(value: Record<string, unknown>): Record<string, unknown> {
+  if (value.earrings !== "cross") return value;
+  const { earrings: _earrings, ...accessories } = value;
+  return { ...accessories, necklace: accessories.necklace ?? "cross" };
+}
+
 function validAccessories(value: unknown): AccessorySelections | null {
   if (!isPlainObject(value)) return null;
   const result: AccessorySelections = {};
 
-  for (const [key, raw] of Object.entries(value)) {
+  for (const [key, raw] of Object.entries(migrateAccessories(value))) {
     if (!(accessoryTypes as readonly string[]).includes(key)) return null;
     if (typeof raw !== "string") return null;
     const type = key as (typeof accessoryTypes)[number];
@@ -129,7 +136,7 @@ export function sanitizeAvatarConfig(input: unknown, defaults: AvatarConfig): Av
     else selections[category] = defaults.selections[category];
   }
 
-  const rawAccessories = isPlainObject(input.accessories) ? input.accessories : {};
+  const rawAccessories = isPlainObject(input.accessories) ? migrateAccessories(input.accessories) : {};
   const accessories: AccessorySelections = {};
   for (const type of accessoryTypes) {
     const raw = rawAccessories[type];

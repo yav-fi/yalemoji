@@ -32,19 +32,53 @@ async function cornerAlpha(png: Buffer) {
 }
 
 describe("renderAvatarAssets", () => {
-  it.each([1, 2, 3, 4, 5])("lowers the cross only for face options 2 and 4 (face %i)", async (face) => {
+  it.each(["eyewear-5", "eyewear-6"])("exports %s with the fixed top and 12-pixel taller frames", async (eyewear) => {
     const config = baseConfig();
-    config.selections.face = `face-${face}`;
-    config.accessories = { earrings: "cross" };
-    const { svg } = await renderAvatarAssets(config);
-    expect(svg.includes('transform="translate(0 7)"')).toBe(face === 2 || face === 4);
+    const [{ png }, original] = await Promise.all([
+      renderAvatarAssets({ ...config, accessories: { eyewear } }),
+      renderAvatarAssets(config)
+    ]);
+    const pixels = async (buffer: Buffer) => {
+      const image = await loadImage(buffer);
+      const context = createCanvas(image.width, image.height).getContext("2d");
+      context.drawImage(image, 0, 0);
+      // The exported subject occupies 428 pixels within the 512-pixel PNG.
+      return (y: number) => [...context.getImageData(
+        Math.floor(42 + 159 * 428 / 502), Math.floor(42 + y * 428 / 502), 1, 1
+      ).data];
+    };
+    const pixel = await pixels(png);
+    const baseline = await pixels(original.png);
+    expect(pixel(248).slice(0, 3)).toEqual([0, 0, 0]);
+    expect(pixel(307)).toEqual(baseline(307));
+    expect(pixel(319)).not.toEqual(baseline(319));
+    expect(pixel(325)).toEqual(baseline(325));
+    const [red, green, blue] = pixel(319);
+    if (eyewear === "eyewear-6") {
+      expect(red).toBeGreaterThan(150);
+      expect(blue).toBeGreaterThan(green);
+      expect(green).toBeGreaterThan(red);
+    } else {
+      expect([red, green, blue]).toEqual([0, 0, 0]);
+    }
   });
-  it("exports the cross with face occlusion and no unresolved colors", async () => {
-    const { svg, png } = await renderAvatarAssets({ ...baseConfig(), accessories: { earrings: "cross" } });
-    expect(svg).toContain('<mask');
-    expect(svg).toContain('translate(15 -21)');
-    expect(svg).not.toContain('var(--avatar-');
-    expect(await cornerAlpha(png)).toBe(0);
+
+  describe.each(["cross", "circle", "star"])("%s necklace", (necklace) => {
+    it.each([1, 2, 3, 4, 5])("lowers it only for face options 2 and 4 (face %i)", async (face) => {
+      const config = baseConfig();
+      config.selections.face = `face-${face}`;
+      config.accessories = { necklace };
+      const { svg } = await renderAvatarAssets(config);
+      expect(svg.includes('transform="translate(0 7)"')).toBe(face === 2 || face === 4);
+    });
+
+    it("exports with face occlusion, transparent background, and resolved colors", async () => {
+      const { svg, png } = await renderAvatarAssets({ ...baseConfig(), accessories: { necklace } });
+      expect(svg).toContain('<mask');
+      expect(svg).toContain('translate(15 -21)');
+      expect(svg).not.toContain('var(--avatar-');
+      expect(await cornerAlpha(png)).toBe(0);
+    });
   });
   it("renders the exact interpolated skin and hair colors rather than their nearest stops", async () => {
     const { svg, png } = await renderAvatarAssets({ ...baseConfig(), skinColorPosition: 0.5, hairColorPosition: 0.5 });

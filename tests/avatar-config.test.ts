@@ -18,6 +18,29 @@ function baseConfig() {
 }
 
 describe("validateAvatarConfig", () => {
+  it.each(["cross", "circle", "star"])("accepts %s as a necklace alongside ear pieces", (necklace) => {
+    const config = { ...baseConfig(), accessories: { earrings: "earrings-1", necklace } };
+    expect(validateAvatarConfig(config)).toEqual(config);
+    expect(sanitizeAvatarConfig(config, baseConfig())).toEqual(config);
+    if (necklace !== "cross") {
+      expect(validateAvatarConfig({ ...config, accessories: { earrings: necklace } })).toBeNull();
+    }
+  });
+
+  it("migrates saved cross selections out of the earrings slot", () => {
+    const config = { ...baseConfig(), accessories: { earrings: "cross" } };
+    const expected = { ...baseConfig(), accessories: { necklace: "cross" } };
+    expect(validateAvatarConfig(config)).toEqual(expected);
+    expect(sanitizeAvatarConfig(config, baseConfig())).toEqual(expected);
+  });
+
+  it("keeps an explicit necklace when migrating an old cross selection", () => {
+    const config = { ...baseConfig(), accessories: { earrings: "cross", necklace: "star" } };
+    const expected = { ...baseConfig(), accessories: { necklace: "star" } };
+    expect(validateAvatarConfig(config)).toEqual(expected);
+    expect(sanitizeAvatarConfig(config, baseConfig())).toEqual(expected);
+  });
+
   it("accepts fractional color positions and rejects invalid positions", () => {
     const config = { ...baseConfig(), skinColorPosition: 0.51, hairColorPosition: 5.25 };
     expect(validateAvatarConfig(config)).toMatchObject(config);

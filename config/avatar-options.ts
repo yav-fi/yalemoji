@@ -11,7 +11,6 @@ export const avatarCategories = [
 export type AvatarCategory = (typeof avatarCategories)[number];
 
 export type AvatarOption = {
-  behindFace?: boolean;
   backSrc?: `/yalemoji/${string}.svg`;
   default?: boolean;
   frontSrc?: `/yalemoji/${string}.svg`;
@@ -26,6 +25,7 @@ export const accessoryTypes = [
   "eyewear",
   "cheeks",
   "earrings",
+  "necklace",
   "hairClips",
   "crest"
 ] as const;
@@ -103,7 +103,7 @@ export const accessoryGroups = [
       "Eyewear",
       "Accessories",
       "eyewear",
-      [1, 2, 3, 4]
+      [1, 2, 3, 4, 5, 6]
     )
   },
   {
@@ -119,16 +119,16 @@ export const accessoryGroups = [
   },
   {
     id: "earrings",
-    label: "Jewelry",
+    label: "Ear Pieces",
+    options: earringOptions
+  },
+  {
+    id: "necklace",
+    label: "Necklaces",
     options: [
-      ...earringOptions.slice(0, 2),
-      {
-        id: "cross",
-        label: "Cross",
-        src: "/yalemoji/Accessories/cross.svg",
-        behindFace: true
-      },
-      ...earringOptions.slice(2)
+      { id: "cross", label: "Cross", src: "/yalemoji/Accessories/cross.svg" },
+      { id: "circle", label: "Circle", src: "/yalemoji/Accessories/circle.svg" },
+      { id: "star", label: "Star", src: "/yalemoji/Accessories/star.svg" }
     ]
   },
   {

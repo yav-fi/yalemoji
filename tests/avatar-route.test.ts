@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createInitialSelections } from "@/config/avatar-options";
+import { createInitialSelections, type AccessorySelections } from "@/config/avatar-options";
 
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn(async () => ({ netid: "abc123" })) }));
 vi.mock("@/lib/avatar-render", () => ({ renderAvatarAssets: vi.fn() }));
@@ -20,12 +20,12 @@ const { commitAvatarVersion, countDesigns, reserveNextVersion } = await import(
   "@/lib/avatar-store"
 );
 
-function saveRequest(selections: Record<string, string | null>) {
+function saveRequest(selections: Record<string, string | null>, accessories: AccessorySelections = {}) {
   return new NextRequest("http://localhost/api/avatar", {
     method: "POST",
     body: JSON.stringify({
       selections,
-      accessories: {},
+      accessories,
       facialHairId: null,
       skinPaletteId: "1",
       hairPaletteId: "1",
@@ -51,6 +51,30 @@ const completeSelections = { ...createInitialSelections(), eyes: "eyes-1", mouth
 
 describe("POST /api/avatar", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it.each([
+    { necklace: "cross", earrings: "earrings-1", eyewear: "eyewear-5" },
+    { necklace: "circle", eyewear: "eyewear-6" },
+    { necklace: "star", eyewear: "eyewear-6" }
+  ])("renders and stores the new accessories: %j", async (accessories) => {
+    mockSuccessfulRender();
+    const response = await POST(saveRequest(completeSelections, accessories));
+    expect(response.status).toBe(200);
+    expect(renderAvatarAssets).toHaveBeenCalledWith(expect.objectContaining({ accessories }));
+    expect(uploadAvatarAssets).toHaveBeenCalledOnce();
+    expect(commitAvatarVersion).toHaveBeenCalledWith("abc123", 1, expect.objectContaining({
+      config: expect.objectContaining({ accessories })
+    }));
+  });
+
+  it("renders and stores legacy cross selections in the necklace slot", async () => {
+    mockSuccessfulRender();
+    const response = await POST(saveRequest(completeSelections, { earrings: "cross" }));
+    expect(response.status).toBe(200);
+    const config = expect.objectContaining({ accessories: { necklace: "cross" } });
+    expect(renderAvatarAssets).toHaveBeenCalledWith(config);
+    expect(commitAvatarVersion).toHaveBeenCalledWith("abc123", 1, expect.objectContaining({ config }));
+  });
 
   it("rejects an avatar without eyes or a mouth before using a version", async () => {
     const selections = { ...createInitialSelections(), eyes: "eyes-1" };

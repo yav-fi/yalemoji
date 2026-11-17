@@ -9,5 +9,3 @@ coverage
 .DS_Store
 npm-debug.log*
 
-# Local internal tools and private directory data
-/.internal/

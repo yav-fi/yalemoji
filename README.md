@@ -122,6 +122,8 @@ Call these from your app's **server**, not the browser, so the key stays secret.
 
 Each consuming app gets its own key so it can be revoked independently. Only the SHA-256 hash is stored (`apiKeys/{keyId}`, with `app`, `description`, `createdAt`, `revokedAt`).
 
+See the [y/cs API-key assignments](docs/api-key-assignments.md) for each product's Secret Manager secret and retrieval instructions.
+
 ```bash
 gcloud auth application-default login
 export GOOGLE_CLOUD_PROJECT=yalemoji

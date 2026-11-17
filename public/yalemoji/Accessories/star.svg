@@ -1,0 +1,14 @@
+<svg width="502" height="502" viewBox="0 0 502 502" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g transform="translate(15 -21)">
+<line x1="167.935" y1="427.560" x2="209.662" y2="456.005" stroke="#EFC000"/>
+<line x1="255.387" y1="426.016" x2="214.291" y2="455.364" stroke="#EFC000"/>
+<mask id="stroke0_182_2" fill="white">
+<path d="M212 451L224.99 472H199.01L212 451Z"/>
+</mask>
+<path d="M212 451L224.99 472H199.01L212 451Z" stroke-width="4" stroke="#EFC000" mask="url(#stroke0_182_2)"/>
+<mask id="stroke1_182_2" fill="white">
+<path d="M212 479L199.01 458H224.99L212 479Z"/>
+</mask>
+<path d="M212 479L199.01 458H224.99L212 479Z" stroke-width="4" stroke="#EFC000" mask="url(#stroke1_182_2)"/>
+</g>
+</svg>

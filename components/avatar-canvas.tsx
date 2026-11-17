@@ -18,7 +18,7 @@ export type AvatarLayerDescriptor = {
   offsetY?: number;
   slot:
     | "hair-back"
-    | "jewelry-back"
+    | "necklace"
     | "face"
     | "cheeks"
     | "mouth"
@@ -56,6 +56,7 @@ export function createAvatarLayers(
   const cheeks = findAccessoryOption("cheeks", accessories.cheeks);
   const crest = findAccessoryOption("crest", accessories.crest);
   const earrings = findAccessoryOption("earrings", accessories.earrings);
+  const necklace = findAccessoryOption("necklace", accessories.necklace);
   const eyewear = findAccessoryOption("eyewear", accessories.eyewear);
   const hairClips = findAccessoryOption("hairClips", accessories.hairClips);
   const layers: AvatarLayerDescriptor[] = [];
@@ -75,17 +76,17 @@ export function createAvatarLayers(
   add("facial-hair", facialHair?.src, "hair");
   add("nose", fixedNoseSrc, "skin");
   add("crest", crest?.src);
-  if (!earrings?.behindFace) add("earrings", earrings?.src);
+  add("earrings", earrings?.src);
   add("hair-front", hair?.frontSrc, "hair");
   // Long hairstyles can include their lower outline in the front asset.
   // Draw necklaces over that outline, masking out the face to keep them behind it.
-  if (earrings?.behindFace) {
+  if (necklace) {
     layers.push({
-      key: `jewelry-back-${earrings.src}`,
-      slot: "jewelry-back",
-      src: earrings.src,
+      key: `necklace-${necklace.src}`,
+      slot: "necklace",
+      src: necklace.src,
       occludedBySrc: face?.src,
-      offsetY: earrings.id === "cross" && (face?.id === "face-2" || face?.id === "face-4") ? 7 : 0
+      offsetY: face?.id === "face-2" || face?.id === "face-4" ? 7 : 0
     });
   }
   add("brows", brows?.src);
