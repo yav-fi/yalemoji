@@ -101,7 +101,7 @@ with `Cache-Control: public, max-age=31536000, immutable` so browsers and shared
 caches can reuse it for one year. Use it directly from any app:
 
 ```html
-<img src="https://www.yalemoji.com/assets/default-avatar.png?v=1" width="512" height="512" alt="Default Yalemoji" />
+<img src="https://www.yalemoji.com/assets/default-avatar.png?v=2" width="512" height="512" alt="Default Yalemoji" />
 ```
 
 If the default artwork changes, increment the `v` query parameter in consuming

@@ -167,7 +167,7 @@ describe("GET /avatar/{netid}.{png,svg}", () => {
   it("falls back to the default image when there is no avatar", async () => {
     const png = await get("zz99.png");
     expect(png.status).toBe(302);
-    expect(png.headers.get("location")).toBe("https://yalemoji.com/assets/default-avatar.png");
+    expect(png.headers.get("location")).toBe("https://yalemoji.com/assets/default-avatar.png?v=2");
     expect(png.headers.get("cache-control")).toBe("private, max-age=300");
 
     const svg = await get("zz99.svg");

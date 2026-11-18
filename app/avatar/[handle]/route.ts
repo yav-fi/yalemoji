@@ -10,6 +10,8 @@ const ERROR_HEADERS = { "Cache-Control": "no-store" };
 // Short, private cache so a newly created avatar shows up soon.
 function defaultAvatarRedirect(request: NextRequest, ext: "svg" | "png") {
   const target = new URL(`/assets/default-avatar.${ext}`, request.nextUrl.origin);
+  // The PNG is cached for a year; use a fresh URL when its artwork changes.
+  if (ext === "png") target.searchParams.set("v", "2");
   return NextResponse.redirect(target, { status: 302, headers: LOOKUP_CACHE_HEADERS });
 }
 
