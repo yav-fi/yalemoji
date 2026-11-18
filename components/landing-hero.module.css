@@ -85,6 +85,11 @@
   background: var(--accent-active);
 }
 
+.cta:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
 .tugText {
   display: flex;
   align-items: center;
@@ -217,4 +222,108 @@
 .physicsCore {
   width: 100%;
   height: 100%;
+}
+
+@media (max-width: 48rem) and (orientation: portrait) {
+  .stage {
+    min-height: max(38rem, 135vw);
+    background-size: 1.75rem 1.75rem;
+  }
+
+  /* Give the portrait board its own composition around the logo and action. */
+  .stage .wordmarkSlot {
+    left: 10%;
+    top: 33%;
+    width: 80%;
+    height: auto;
+    aspect-ratio: 465 / 127;
+  }
+
+  .stage .ctaSlot {
+    left: max(1.5rem, calc(50% - 10rem));
+    top: 51%;
+    width: calc(100% - 3rem);
+    max-width: 20rem;
+    height: 3.5rem;
+  }
+
+  .cta {
+    padding-inline: 1.5rem;
+    font-size: 1.125rem;
+  }
+
+  .stage .medalSlot {
+    left: -12%;
+    top: -5%;
+    width: min(54%, 16rem);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .stage .starSlot {
+    left: 45%;
+    top: 3%;
+    width: min(18%, 6rem);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .stage .starEyesSlot {
+    left: 61%;
+    top: 11%;
+    width: min(30%, 9rem);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .stage .soundSlot {
+    left: 45%;
+    top: 19%;
+    width: clamp(2.75rem, 12vw, 4rem);
+    height: clamp(2.75rem, 12vw, 4rem);
+  }
+
+  .stage .noteSlot {
+    left: 3%;
+    top: 66%;
+    width: min(44%, 13rem);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .stage .boySlot {
+    left: 58%;
+    top: 63%;
+    width: min(34%, 10rem);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .stage .darkHairSlot {
+    left: 49%;
+    top: auto;
+    bottom: 2%;
+    width: min(29%, 8.5rem);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .stage .tugSlot {
+    left: 36%;
+    top: 7%;
+    width: 25%;
+    height: 2.75rem;
+  }
+}
+
+@media (max-width: 58rem) and (orientation: landscape) {
+  .stage {
+    min-height: 22rem;
+  }
+
+  .stage .ctaSlot {
+    left: 35%;
+    width: 30%;
+    height: 3rem;
+  }
 }

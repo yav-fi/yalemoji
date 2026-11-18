@@ -6,7 +6,7 @@ import styles from "./medal-tug.module.css";
 
 type Placement = { x: string; y: string; w: string; h: string; delay: string };
 
-export function MedalTug({ onTug, placement }: { onTug: () => void; placement: Placement }) {
+export function MedalTug({ onTug, placement, className }: { onTug: () => void; placement: Placement; className?: string }) {
   const ref = useRef<HTMLButtonElement | null>(null);
   const onTugRef = useRef(onTug);
   onTugRef.current = onTug;
@@ -24,7 +24,7 @@ export function MedalTug({ onTug, placement }: { onTug: () => void; placement: P
   } as CSSProperties;
 
   return (
-    <div aria-hidden="true" className={styles.slot} style={slotStyle}>
+    <div aria-hidden="true" className={[styles.slot, className].filter(Boolean).join(" ")} style={slotStyle}>
       <button className={styles.medal} ref={ref} type="button" tabIndex={-1}
         data-physics-body="" data-mass-grams={120} data-draggable="true" data-tether="medal">
         <Image alt="" className={styles.image} draggable={false} fill priority sizes="(max-width: 48rem) 220px, 472px" src="/assets/landing/medal.png" />

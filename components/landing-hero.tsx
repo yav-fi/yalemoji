@@ -63,7 +63,7 @@ export function LandingHero() {
 
   return (
     <section aria-label="YaleMoji" className={styles.stage} data-landing-stage="" ref={stageRef}>
-      <div className={styles.core} style={coreStyle(PLACEMENT.wordmark)}>
+      <div className={`${styles.core} ${styles.wordmarkSlot}`} style={coreStyle(PLACEMENT.wordmark)}>
         <div className={styles.physicsCore} data-physics-body="" data-mass-grams={1000000}>
           <Image
             alt="YaleMoji"
@@ -86,59 +86,60 @@ export function LandingHero() {
         </div>
       </div>
 
-      <DraggableSticker mass={8} placement={PLACEMENT.stickyNote}>
+      <DraggableSticker className={styles.noteSlot} mass={8} placement={PLACEMENT.stickyNote}>
         <Image
           alt=""
           className={styles.stickyNote}
           height={321}
           priority
-          sizes="20vw"
+          sizes="(max-width: 48rem) 44vw, 23vw"
           src="/assets/landing/sticky-note.png"
           width={321}
         />
       </DraggableSticker>
 
-      <DraggableSticker placement={PLACEMENT.avatarDarkHair}>
+      <DraggableSticker className={styles.darkHairSlot} placement={PLACEMENT.avatarDarkHair}>
         <Image
           alt=""
           className={styles.avatarImage}
           height={1080}
-          sizes="16vw"
+          sizes="(max-width: 48rem) 29vw, 16vw"
           src="/assets/landing/avatar-dark-hair.png"
           width={1080}
         />
       </DraggableSticker>
 
-      <DraggableSticker placement={PLACEMENT.avatarBoy}>
+      <DraggableSticker className={styles.boySlot} placement={PLACEMENT.avatarBoy}>
         <Image
           alt=""
           className={styles.avatarImage}
           height={1080}
-          sizes="16vw"
+          sizes="(max-width: 48rem) 34vw, 16vw"
           src="/assets/landing/avatar-boy.png"
           width={1080}
         />
       </DraggableSticker>
 
-      <DraggableSticker placement={PLACEMENT.avatarStarEyes}>
+      <DraggableSticker className={styles.starEyesSlot} placement={PLACEMENT.avatarStarEyes}>
         <Image
           alt=""
           className={styles.avatarImage}
           height={1080}
-          sizes="18vw"
+          sizes="(max-width: 48rem) 30vw, 18vw"
           src="/assets/landing/avatar-star-eyes.png"
           style={{ transform: "rotate(8.65deg)" }}
           width={1080}
         />
       </DraggableSticker>
 
-      <DraggableSticker mass={15} placement={PLACEMENT.star}>
+      <DraggableSticker className={styles.starSlot} mass={15} placement={PLACEMENT.star}>
         <div className={styles.star}>
           <Image alt="" className={styles.starImage} height={116} src="/assets/landing/star.svg" width={116} />
         </div>
       </DraggableSticker>
 
       <DraggableSticker
+        className={styles.soundSlot}
         ariaLabel={isPlaying ? "Pause Boola Boola" : "Play Boola Boola"}
         onTap={handleAirpodTap}
         placement={PLACEMENT.soundCluster}
@@ -163,9 +164,9 @@ export function LandingHero() {
         </div>
       </DraggableSticker>
 
-      <MedalTug onTug={() => setTugCount((count) => count + 1)} placement={PLACEMENT.medal} />
+      <MedalTug className={styles.medalSlot} onTug={() => setTugCount((count) => count + 1)} placement={PLACEMENT.medal} />
 
-      <div className={styles.core} style={coreStyle(PLACEMENT.cta)}>
+      <div className={`${styles.core} ${styles.ctaSlot}`} style={coreStyle(PLACEMENT.cta)}>
         <div className={styles.physicsCore} data-physics-body="" data-mass-grams={1000000}>
           <Link className={styles.cta} draggable={false} href="/editor">
             CREATE NOW
@@ -174,7 +175,7 @@ export function LandingHero() {
       </div>
 
       {tugCount > 0 && (
-        <DraggableSticker mass={2} placement={PLACEMENT.tugText}>
+        <DraggableSticker className={styles.tugSlot} mass={2} placement={PLACEMENT.tugText}>
           <p className={styles.tugText}>
             <strong>{tugCount}</strong> {tugCount === 1 ? "tug!" : "tugs!"}
           </p>

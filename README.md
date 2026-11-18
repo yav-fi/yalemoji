@@ -96,6 +96,17 @@ Approved Yale apps can resolve a NetID (the same NetID Yalies/CAS gives us at lo
 
 Call the JSON lookup API from your app's server, then use the returned `png_url` or `svg_url` as the browser's image source. These URLs contain an opaque ID and a revision number rather than a NetID. If the API reports no avatar, display `/assets/default-avatar.png` or `.svg`.
 
+The default PNG is public (no API key), transparent, and 512×512. It is served
+with `Cache-Control: public, max-age=31536000, immutable` so browsers and shared
+caches can reuse it for one year. Use it directly from any app:
+
+```html
+<img src="https://www.yalemoji.com/assets/default-avatar.png?v=1" width="512" height="512" alt="Default Yalemoji" />
+```
+
+If the default artwork changes, increment the `v` query parameter in consuming
+apps to give the new image a fresh cache URL.
+
 `GET /avatar/{netid}.svg` or `/avatar/{netid}.png` is also available as a redirect for app servers, with `Authorization: Bearer <key>` required. It shares the JSON APIs' per-key rate limit. It cannot be used directly in an `<img>` tag because image tags cannot send this header; never put API keys in URLs or browser code.
 
 Authenticated image lookups redirect to the current asset, or to a default silhouette for a missing avatar or invalid NetID. Redirects use `Cache-Control: private, max-age=300`. Infrastructure failures return `503 server_error` with `Cache-Control: no-store` and no redirect, so an outage cannot cache a silhouette in place of an existing avatar. Authentication and rate-limit errors are also uncached. The background isn't exposed through this redirect; use `background_url` from the JSON APIs.
