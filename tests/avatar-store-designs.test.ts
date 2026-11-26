@@ -1,9 +1,11 @@
-import type { Firestore } from "@google-cloud/firestore";
+import { FieldValue, type Firestore } from "@google-cloud/firestore";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  clearCurrentAvatar,
   commitAvatarVersion,
   deleteDesign,
   getAvatarId,
+  getCurrentAvatar,
   getDesign,
   makeDesignCurrent,
   renameDesign
@@ -62,6 +64,7 @@ function fakeFirestore(initial: Record<string, Data> = {}) {
         get: (ref: { path: string }) => Promise<ReturnType<typeof snapshot>>;
         delete: (ref: { path: string }) => void;
         set: (ref: { path: string }, data: Data, options?: { merge?: boolean }) => void;
+        update: (ref: { path: string }, patch: Data) => void;
       }) => Promise<T>
     ) =>
       run({
@@ -71,6 +74,13 @@ function fakeFirestore(initial: Record<string, Data> = {}) {
         },
         set: (ref, data, options) => {
           docs.set(ref.path, options?.merge ? { ...docs.get(ref.path), ...data } : data);
+        },
+        update: (ref, patch) => {
+          const data = { ...docs.get(ref.path), ...patch };
+          for (const [key, value] of Object.entries(patch)) {
+            if (value === FieldValue.delete()) delete data[key];
+          }
+          docs.set(ref.path, data);
         }
       })
   };
@@ -196,6 +206,30 @@ describe("design store functions", () => {
       await expect(makeDesignCurrent("abc123", 5, db)).resolves.toBe("ok");
       expect(docs.get("users/abc123")).toEqual(user);
     });
+  });
+
+  it("clears the live avatar while preserving saved versions for reactivation", async () => {
+    const { config, ...urls } = version;
+    const { db, docs } = fakeFirestore({
+      "users/abc123": { avatarVersion: 5, versionCounter: 5, ...urls },
+      "users/abc123/avatars/5": version,
+      "users/abc123/avatars/2": { ...version, name: "Older design" }
+    });
+
+    await clearCurrentAvatar("abc123", db);
+    await clearCurrentAvatar("abc123", db);
+
+    await expect(getCurrentAvatar("abc123", db)).resolves.toBeNull();
+    const user = docs.get("users/abc123");
+    expect(user).toMatchObject({ versionCounter: 5 });
+    for (const field of ["avatarVersion", ...Object.keys(urls)]) {
+      expect(user).not.toHaveProperty(field);
+    }
+    expect(docs.get("users/abc123/avatars/5")).toEqual({ config, ...urls });
+    expect(docs.get("users/abc123/avatars/2")).toEqual({ ...version, name: "Older design" });
+
+    await expect(makeDesignCurrent("abc123", 5, db)).resolves.toBe("ok");
+    await expect(getCurrentAvatar("abc123", db)).resolves.toEqual({ version: 5, ...urls });
   });
 
   describe("the editor's checkmark save (commitAvatarVersion)", () => {

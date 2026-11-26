@@ -373,6 +373,26 @@ export async function makeDesignCurrent(
   });
 }
 
+export async function clearCurrentAvatar(
+  netid: string,
+  db: Firestore = getFirestore()
+): Promise<void> {
+  const userRef = db.collection("users").doc(netid);
+
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(userRef);
+    if (!snapshot.exists || !snapshot.get("avatarVersion")) return;
+
+    transaction.update(userRef, {
+      avatarVersion: FieldValue.delete(),
+      pngUrl: FieldValue.delete(),
+      svgUrl: FieldValue.delete(),
+      backgroundUrl: FieldValue.delete(),
+      updatedAt: FieldValue.serverTimestamp()
+    });
+  });
+}
+
 export async function getCurrentAvatar(
   netid: string,
   db: Firestore = getFirestore()

@@ -8,9 +8,7 @@ import { formatShortAge, MAX_DESIGN_NAME, type Design } from "@/lib/designs";
 import styles from "./designs-grid.module.css";
 
 type GridDesign = Design & { savedLabel: string };
-
-// The page heading in app/designs/page.tsx, focused when the last card is removed.
-const HEADING_ID = "designs-title";
+type CurrentChangeResult = "ok" | "not_found" | "busy";
 
 // Re-renders every 10 seconds so "33s ago" keeps counting.
 function useNow(intervalMs = 10_000) {
@@ -24,23 +22,27 @@ function useNow(intervalMs = 10_000) {
 }
 
 function DesignCard({
+  currentChangePending,
   design,
+  isCurrent,
   now,
   onGone,
-  onMadeCurrent,
+  onMakeCurrent,
   onRemoved,
   onRenamed,
   registerLink
 }: {
+  currentChangePending: boolean;
   design: GridDesign;
+  isCurrent: boolean;
   now: number;
   onGone: (version: number) => void;
-  onMadeCurrent: (version: number) => void;
+  onMakeCurrent: (design: GridDesign) => Promise<CurrentChangeResult>;
   onRemoved: (version: number) => void;
   onRenamed: (version: number, name: string) => void;
   registerLink: (version: number, link: HTMLAnchorElement | null) => void;
 }) {
-  const { version, name, isCurrent } = design;
+  const { version, name } = design;
   const [mode, setMode] = useState<"view" | "rename" | "confirm">("view");
   const [draft, setDraft] = useState(name);
   const [pending, setPending] = useState(false);
@@ -133,22 +135,20 @@ function DesignCard({
   }
 
   async function makeCurrent() {
-    if (isCurrent || pendingRef.current) return;
+    if (isCurrent || pendingRef.current || currentChangePending) return;
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(`${url}/current`, { method: "POST" });
-      if (response.status === 404) {
+      const result = await onMakeCurrent(design);
+      if (result === "not_found") {
         onGone(version);
-        return;
+      } else if (result === "ok") {
+        focusNext.current = "select";
       }
-      if (!response.ok) throw new Error("make current failed");
-      setBusy(false);
-      focusNext.current = "select";
-      onMadeCurrent(version);
     } catch {
-      setBusy(false);
       setError("Couldn't make this design current.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -238,6 +238,7 @@ function DesignCard({
 
       <div className={styles.actions}>
         <button
+          aria-disabled={currentChangePending || undefined}
           aria-label={`Make ${name} current`}
           aria-pressed={isCurrent}
           className={`${styles.selectButton} ${isCurrent ? styles.selected : ""}`}
@@ -323,25 +324,35 @@ function DesignCard({
   );
 }
 
-// This grid is the source of truth for the list once the page has rendered, so
-// it never calls router.refresh().
-export function DesignsGrid({ designs: initialDesigns }: { designs: GridDesign[] }) {
+export function DesignsGrid({
+  designs: initialDesigns,
+  initialCurrentVersion = initialDesigns?.find((design) => design.isCurrent)?.version ?? null
+}: {
+  designs: GridDesign[] | null;
+  initialCurrentVersion?: number | null;
+}) {
   const router = useRouter();
   const now = useNow();
-  const [designs, setDesigns] = useState(initialDesigns);
+  const [localDesigns, setDesigns] = useState(initialDesigns);
+  const designs = localDesigns ?? initialDesigns;
+  const [currentVersion, setCurrentVersion] = useState(initialCurrentVersion);
+  const [currentChangePending, setCurrentChangePending] = useState(false);
+  const currentChangeInFlight = useRef(false);
+  const [clearError, setClearError] = useState(false);
   // Read by takeOut, which can run after a later render (two removals in
   // flight), so it must not use a stale closure's list.
   const designsRef = useRef(designs);
   designsRef.current = designs;
   const [announcement, setAnnouncement] = useState("");
   const links = useRef(new Map<number, HTMLAnchorElement>());
+  const heading = useRef<HTMLHeadingElement>(null);
   const focusNext = useRef<number | "heading" | null>(null);
 
   useEffect(() => {
     const target = focusNext.current;
     if (target === null) return;
     focusNext.current = null;
-    if (target === "heading") document.getElementById(HEADING_ID)?.focus();
+    if (target === "heading") heading.current?.focus();
     else links.current.get(target)?.focus();
   });
 
@@ -353,20 +364,71 @@ export function DesignsGrid({ designs: initialDesigns }: { designs: GridDesign[]
   // Takes a card out and moves focus to the next card, the previous one if it
   // was last, or the page heading if none is left.
   function takeOut(version: number, message: string) {
-    const list = designsRef.current;
+    const list = designsRef.current ?? [];
     const index = list.findIndex((design) => design.version === version);
     const neighbour = list[index + 1] ?? list[index - 1];
     focusNext.current = neighbour ? neighbour.version : "heading";
-    setDesigns((current) => current.filter((design) => design.version !== version));
+    setDesigns((current) =>
+      (current ?? initialDesigns ?? []).filter((design) => design.version !== version)
+    );
     setAnnouncement(message);
+  }
+
+  async function changeCurrent(design: GridDesign | null): Promise<CurrentChangeResult> {
+    if (currentChangeInFlight.current) return "busy";
+    currentChangeInFlight.current = true;
+    setCurrentChangePending(true);
+    setClearError(false);
+
+    try {
+      const response = design
+        ? await fetch(`/api/designs/${design.version}/current`, { method: "POST" })
+        : await fetch("/api/designs/current", { method: "DELETE" });
+      if (design && response.status === 404) return "not_found";
+      if (!response.ok) throw new Error("Avatar update failed");
+
+      setCurrentVersion(design?.version ?? null);
+      setAnnouncement(design ? `'${design.name}' is now your current avatar.` : "");
+      // Refresh the profile avatar while keeping the grid's local edits.
+      router.refresh();
+      return "ok";
+    } finally {
+      currentChangeInFlight.current = false;
+      setCurrentChangePending(false);
+    }
+  }
+
+  async function clearCurrent() {
+    if (currentVersion === null || currentChangePending) return;
+    try {
+      await changeCurrent(null);
+    } catch {
+      setClearError(true);
+    }
   }
 
   return (
     <>
+      <div className={styles.headingRow}>
+        <h1 className={styles.title} ref={heading} tabIndex={-1}>Designs</h1>
+        <button
+          aria-disabled={currentVersion === null || currentChangePending}
+          className={styles.clearButton}
+          onClick={() => void clearCurrent()}
+          type="button"
+        >
+          Clear Yalemoji
+        </button>
+      </div>
       <p className={styles.announcement} role="status">
-        {announcement}
+        {announcement || (currentVersion === null ? "No current Yalemoji." : "")}
       </p>
-      {designs.length === 0 ? (
+      {clearError ? (
+        <p className={styles.pageError} role="alert">Couldn&apos;t clear your Yalemoji. Try again.</p>
+      ) : null}
+      {designs === null ? (
+        <p className={styles.pageError} role="alert">Couldn&apos;t load your designs. Try again.</p>
+      ) : designs.length === 0 ? (
         <div className={styles.empty}>
           <p>No designs yet</p>
           <Link href="/editor">Create one in the editor</Link>
@@ -375,23 +437,19 @@ export function DesignsGrid({ designs: initialDesigns }: { designs: GridDesign[]
         <ul className={styles.grid}>
           {designs.map((design) => (
             <DesignCard
+              currentChangePending={currentChangePending}
               design={design}
+              isCurrent={currentVersion === design.version}
               key={design.version}
               now={now}
               onGone={(version) => takeOut(version, "This design no longer exists.")}
-              onMadeCurrent={(version) => {
-                setDesigns((current) =>
-                  current.map((item) => ({ ...item, isCurrent: item.version === version }))
-                );
-                setAnnouncement(`'${design.name}' is now your current avatar.`);
-                // Updates the header avatar. The grid keeps its own list: its
-                // state was seeded once and ignores the new props.
-                router.refresh();
-              }}
+              onMakeCurrent={changeCurrent}
               onRemoved={(version) => takeOut(version, "")}
               onRenamed={(version, name) =>
                 setDesigns((current) =>
-                  current.map((item) => (item.version === version ? { ...item, name } : item))
+                  (current ?? initialDesigns ?? []).map((item) =>
+                    item.version === version ? { ...item, name } : item
+                  )
                 )
               }
               registerLink={registerLink}

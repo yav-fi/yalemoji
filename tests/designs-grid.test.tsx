@@ -307,12 +307,7 @@ describe("DesignsGrid", () => {
 
     it("focuses the page heading when the last removable card is removed", async () => {
       stubFetch(() => new Response(null, { status: 204 }));
-      render(
-        <>
-          <h1 id="designs-title" tabIndex={-1}>Designs</h1>
-          <DesignsGrid designs={[design(1, "Untitled 1")]} />
-        </>
-      );
+      render(<DesignsGrid designs={[design(1, "Untitled 1")]} />);
       fireEvent.click(screen.getByRole("button", { name: "Remove Untitled 1" }));
       fireEvent.click(screen.getByRole("button", { name: "Remove" }));
 
@@ -385,6 +380,49 @@ describe("DesignsGrid", () => {
         "Couldn't make this design current."
       );
       expect(screen.getByRole("button", { name: "Make Beach day current" })).toHaveAttribute("aria-pressed", "true");
+    });
+  });
+
+  describe("clearing the current Yalemoji", () => {
+    it("waits for the clear, keeps both designs, and refreshes the profile avatar", async () => {
+      refresh.mockClear();
+      const response = deferred<Response>();
+      const fetchMock = stubFetch(() => response.promise);
+      render(<DesignsGrid designs={fixtures()} />);
+
+      const clear = screen.getByRole("button", { name: "Clear Yalemoji" });
+      const current = screen.getByRole("button", { name: "Make Beach day current" });
+      fireEvent.click(clear);
+      fireEvent.click(screen.getByRole("button", { name: "Make Untitled 1 current" }));
+      expect(current).toHaveAttribute("aria-pressed", "true");
+      expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/designs/current", { method: "DELETE" });
+
+      await act(async () => response.resolve(new Response(null, { status: 204 })));
+
+      expect(current).toHaveAttribute("aria-pressed", "false");
+      expect(clear).toHaveAttribute("aria-disabled", "true");
+      expect(screen.getByRole("status")).toHaveTextContent("No current Yalemoji.");
+      expect(screen.getAllByRole("listitem")).toHaveLength(2);
+      expect(screen.getByRole("link", { name: "Open Beach day" })).toHaveAttribute(
+        "href",
+        "/editor?design=3"
+      );
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows a retryable error if the clear fails", async () => {
+      stubFetch(() => json(500, { error: "server_error" }));
+      render(<DesignsGrid designs={fixtures()} />);
+
+      const clear = screen.getByRole("button", { name: "Clear Yalemoji" });
+      fireEvent.click(clear);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't clear your Yalemoji.");
+      expect(clear).toHaveAttribute("aria-disabled", "false");
+      expect(screen.getByRole("button", { name: "Make Beach day current" })).toHaveAttribute(
+        "aria-pressed",
+        "true"
+      );
     });
   });
 

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn(async () => ({ netid: "abc123" })) }));
 vi.mock("@/lib/avatar-store", () => ({
   checkDesignEditRateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 0 })),
+  clearCurrentAvatar: vi.fn(async () => {}),
   deleteDesign: vi.fn(async () => "ok"),
   makeDesignCurrent: vi.fn(async () => "ok"),
   renameDesign: vi.fn(async () => "ok")
@@ -11,10 +12,10 @@ vi.mock("@/lib/avatar-store", () => ({
 
 const { DELETE, PATCH } = await import("@/app/api/designs/[version]/route");
 const { POST: MAKE_CURRENT } = await import("@/app/api/designs/[version]/current/route");
+const { DELETE: CLEAR_CURRENT } = await import("@/app/api/designs/current/route");
 const { getCurrentUser } = await import("@/lib/auth");
-const { checkDesignEditRateLimit, deleteDesign, makeDesignCurrent, renameDesign } = await import(
-  "@/lib/avatar-store"
-);
+const { checkDesignEditRateLimit, clearCurrentAvatar, deleteDesign, makeDesignCurrent, renameDesign } =
+  await import("@/lib/avatar-store");
 
 const ctx = (version: string) => ({ params: Promise.resolve({ version }) });
 
@@ -30,6 +31,22 @@ function deleteRequest(version = "3") {
 }
 
 beforeEach(() => vi.clearAllMocks());
+
+describe("DELETE /api/designs/current", () => {
+  it("requires an authenticated session", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValueOnce(null);
+
+    expect((await CLEAR_CURRENT()).status).toBe(401);
+    expect(clearCurrentAvatar).not.toHaveBeenCalled();
+  });
+
+  it("clears the session user's live avatar", async () => {
+    expect((await CLEAR_CURRENT()).status).toBe(204);
+    expect(checkDesignEditRateLimit).toHaveBeenCalledWith("abc123");
+    expect(clearCurrentAvatar).toHaveBeenCalledWith("abc123");
+    expect(deleteDesign).not.toHaveBeenCalled();
+  });
+});
 
 describe("PATCH /api/designs/{version}", () => {
   it("requires a session", async () => {

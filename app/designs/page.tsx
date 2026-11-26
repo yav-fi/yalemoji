@@ -54,17 +54,7 @@ export default async function DesignsPage({ searchParams }: {
         netid={user.netid}
       />
       <main className={styles.page}>
-        {/* Focus target when the last design is removed. */}
-        <h1 className={styles.title} id="designs-title" tabIndex={-1}>
-          Designs
-        </h1>
-        {designs ? (
-          <DesignsGrid designs={designs} />
-        ) : (
-          <p className={styles.loadError} role="alert">
-            Couldn&apos;t load your designs. Try again.
-          </p>
-        )}
+        <DesignsGrid designs={designs} initialCurrentVersion={avatar?.version} />
       </main>
     </>
   );
